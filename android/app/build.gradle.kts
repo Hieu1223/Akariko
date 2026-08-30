@@ -36,6 +36,23 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/CONTRIBUTORS.md",
+                "META-INF/LICENSE.md",
+                "META-INF/NOTICE.md",
+                "META-INF/README.md"
+            )
+        }
+    }
+
+    dependencies {
+        // Phase 4 tokenizer bridge: Kuromoji ipadic (on-device Japanese
+        // morphological analysis). Served over the `yomu/tokenizer` channel.
+        implementation("com.atilika.kuromoji:kuromoji-ipadic:0.9.0")
+    }
 }
 
 kotlin {
