@@ -6,10 +6,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../core/constants/db_constants.dart';
 import 'daos/browser_dao.dart';
-import 'daos/dictionary_dao.dart';
 import 'tables/decks_table.dart';
 import 'tables/download_items_table.dart';
-import 'tables/dictionary_entries_table.dart';
 import 'tables/flashcards_table.dart';
 import 'tables/history_table.dart';
 import 'tables/bookmarks_table.dart';
@@ -23,12 +21,15 @@ part 'app_database.g.dart';
 
 /// Root Drift database. Owns the full Yomu schema from phase 1 so later
 /// phases only add rows/queries, never new tables (per the roadmap §9).
+///
+/// The dictionary is intentionally NOT here: it is a prebuilt, compressed trie
+/// asset held entirely in memory (see `InMemoryDictionary`), so there is no
+/// dictionary table, FTS index, or import flow in the database.
 @DriftDatabase(
   tables: [
     TabsTable,
     HistoryTable,
     BookmarksTable,
-    DictionaryEntriesTable,
     DecksTable,
     FlashcardsTable,
     ReviewLogsTable,
@@ -37,66 +38,47 @@ part 'app_database.g.dart';
     NewsArticlesTable,
     PasswordEntriesTable,
   ],
-  daos: [BrowserDao, DictionaryDao],
+  daos: [BrowserDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? driftDatabase(name: 'yomu'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _seedNewsSources(m);
-          await _createDictionaryFts();
         },
         onUpgrade: (m, from, to) async {
-          // v2 (phase 3): FTS5 index backing dictionary search.
+          // v2 (phase 3) added an FTS5 index over the (now removed) dictionary
+          // table; nothing to keep.
           if (from < 2) {
-            await _createDictionaryFts();
-            // Users who imported under v1 already have rows; rebuild the index
-            // so latin/meaning search isn't silently served by contains-fallback.
-            if (await dictionaryDao.countEntries() > 0) {
-              await dictionaryDao.rebuildFtsIndex();
-            }
+            await customStatement('DROP TABLE IF EXISTS dictionary_fts');
           }
-          // v3: the dictionary is trimmed to word/reading/meanings — drop the
-          // now-unused `pos` and `source_pack` columns. SQLite < 3.35 lacks
-          // DROP COLUMN, but the bundled sqlite3 is recent enough.
-          if (from < 3) {
+          // v4: the dictionary table is gone (moved to the in-memory asset) and we
+          // add indexes that back the tabs/history ordering + history de-dup.
+          if (from < 4) {
             await customStatement(
-              'ALTER TABLE ${DbConstants.dictionaryEntries} DROP COLUMN pos',
+              'DROP TABLE IF EXISTS dictionary_entries_table',
             );
             await customStatement(
-              'ALTER TABLE ${DbConstants.dictionaryEntries} '
-              'DROP COLUMN source_pack',
+              'DROP TABLE IF EXISTS dictionary_fts',
+            );
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_tabs_last_active_at '
+              'ON ${DbConstants.tabs} (last_active_at)',
+            );
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_history_visited_at '
+              'ON ${DbConstants.history} (visited_at)',
             );
           }
         },
       );
-
-  /// Creates the FTS5 index over [DictionaryEntriesTable].
-  ///
-  /// Declared as an *external content* table (`content=`), so the index holds
-  /// no second copy of the ~190k rows — it reads them from the base table by
-  /// rowid. `remove_diacritics 2` makes latin/Vietnamese lookups accent
-  /// insensitive ("de dat" → "dè dặt"); Japanese input is served by the
-  /// headword/reading indexes instead (see `DictionaryDao`).
-  Future<void> _createDictionaryFts() async {
-    await customStatement('''
-      CREATE VIRTUAL TABLE IF NOT EXISTS ${DbConstants.dictionaryFts}
-      USING fts5(
-        ${DbConstants.headword},
-        ${DbConstants.reading},
-        ${DbConstants.meaningsJson},
-        content='${DbConstants.dictionaryEntries}',
-        tokenize='unicode61 remove_diacritics 2'
-      )
-    ''');
-  }
 
   Future<void> _seedNewsSources(Migrator m) async {
     // Default seed list (§7.17). Inserted once on first launch; every row is

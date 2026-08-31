@@ -35,9 +35,9 @@ class TabSwitcherViewModel extends Notifier<TabSwitcherState> {
   Future<void> closeTab(String id) => _module.closeTab(id);
   Future<void> openNewTab() => _module.createTab(url: 'about:home', title: 'New Tab');
 
-  /// Clears every tab except a single fresh blank tab (§7.4 "Close All").
+  /// Clears every tab. The browser view-model's tab watcher re-creates a single
+  /// fresh blank tab so the browser is never left empty.
   Future<void> closeAll() async {
     await _module.closeAll();
-    await _module.createTab(url: 'about:home', title: 'New Tab');
   }
 }

@@ -117,21 +117,42 @@ class BrowserViewModel extends Notifier<BrowserState> {
   StreamSubscription<List<TabModel>>? _sub;
 
   void _onTabsChanged(List<TabModel> tabs) {
-    if (tabs.isEmpty) return;
+    if (tabs.isEmpty) {
+      // The last tab was closed. Keep the browser alive with a fresh home tab;
+      // its insertion re-fires this listener with a non-empty list.
+      _module.createTab(url: kHomeUrl, title: 'New Tab').ignore();
+      return;
+    }
+
     final prev = state.activeTabId;
     final activeStillExists = tabs.any((t) => t.id == state.activeTabId);
+    // When the active tab was closed, fall back to the most recently active
+    // remaining tab (the list is ordered by `lastActiveAt` desc).
     final newActive =
         activeStillExists ? state.activeTabId : (tabs.firstOrNull?.id ?? '');
+
+    // Drop any cached/registered WebViews whose tab no longer exists (e.g. the
+    // just-closed one) so they don't leak and aren't rendered.
+    final validIds = {for (final t in tabs) t.id};
+    final stale = manager.cachedTabIds.where((id) => !validIds.contains(id));
+    for (final id in stale.toList()) {
+      manager.unregisterController(id);
+    }
+
     // `watchTabs` re-emits on every `updateTab` (which rewrites `lastActiveAt`
     // and reorders the list). Skip the rebuild when only ordering/visibility
     // changed — the WebView tree doesn't care about tab order.
-    if (state.activeTabId == newActive && _tabsStructurallyEqual(state.tabs, tabs)) {
+    if (state.activeTabId == newActive &&
+        _tabsStructurallyEqual(state.tabs, tabs)) {
+      _syncCachedState(); // a stale controller may still have been pruned
       return;
     }
+
     state = state.copyWith(tabs: tabs, activeTabId: newActive);
     // The (new) active tab must always have its WebView mounted, otherwise its
     // page would render blank after a close-switch.
     _ensureCached(newActive);
+    _syncCachedState();
     _syncAddressBar();
     if (newActive.isNotEmpty) _refreshNavStateActive();
     if (newActive != prev) _resetAddressBar();
@@ -156,13 +177,14 @@ class BrowserViewModel extends Notifier<BrowserState> {
   void unregisterController(String tabId) => manager.unregisterController(tabId);
 
   /// Adds [id] to the live-WebView pool (active-first) and trims to the cap,
-  /// releasing the page data of tabs pushed out. Mirrors [WebViewInstanceManager]
-  /// into [BrowserState.cachedTabIds] so the UI rebuilds.
-  void _ensureCached(String id) {
+  /// releasing the page data of tabs pushed out. Returns the new ordered list of
+  /// cached tab ids so the caller can mirror it into [BrowserState] in a single
+  /// `state` write (#9 — batch rebuilds instead of writing on every step).
+  List<String> _ensureCached(String id) {
     final tab = state.tabs.where((t) => t.id == id).firstOrNull;
     manager.activeTabId = state.activeTabId;
     manager.ensureCached(id, isHome: tab?.url == kHomeUrl);
-    _syncCachedState();
+    return manager.cachedTabIds;
   }
 
   void _syncCachedState() =>
@@ -194,12 +216,12 @@ class BrowserViewModel extends Notifier<BrowserState> {
       _scheduleRelease(leaving.id);
     }
 
-    state = state.copyWith(activeTabId: id);
-    manager.activeTabId = id;
     _nav.setLoading(false);
-    _ensureCached(id);
+    final newCached = _ensureCached(id);
+    manager.activeTabId = id;
     // The newly active tab must never be on a release timer.
     manager.cancelRelease(id);
+    state = state.copyWith(activeTabId: id, cachedTabIds: newCached);
 
     _resetAddressBar();
     revealChrome();
@@ -209,13 +231,11 @@ class BrowserViewModel extends Notifier<BrowserState> {
   }
 
   Future<void> closeTab(String id) async {
+    // Release the WebView and idle timer immediately so the closed tab doesn't
+    // leak; the watch listener reconciles the active tab and keeps a tab alive.
     manager.unregisterController(id);
     manager.cancelRelease(id);
     await _module.closeTab(id);
-    if (state.tabs.length <= 1) {
-      await _module.createTab(url: kHomeUrl, title: 'New Tab');
-    }
-    _syncCachedState();
   }
 
   /// Navigates the active tab to user input (URL or search query).
@@ -235,9 +255,9 @@ class BrowserViewModel extends Notifier<BrowserState> {
     } else {
       // Home→web (or freshly created) tab: mount a WebView that loads [target].
       _ensureCached(tab.id);
+      _syncCachedState();
     }
     _refreshNavStateActive();
-    await _module.recordVisit(target);
     await _refreshBookmarkState();
   }
 
@@ -410,10 +430,11 @@ class BrowserViewModel extends Notifier<BrowserState> {
   Future<void> askAi(String text) async {
     final url = ref.read(aiLauncherModuleProvider).explainUrl(text);
     final tab = await _module.createTab(url: url, title: 'ChatGPT');
-    state = state.copyWith(activeTabId: tab.id);
     manager.activeTabId = tab.id;
-    _ensureCached(tab.id);
+    _nav.setLoading(false);
+    final newCached = _ensureCached(tab.id);
     manager.cancelRelease(tab.id);
+    state = state.copyWith(activeTabId: tab.id, cachedTabIds: newCached);
     _resetAddressBar();
     _refreshNavStateActive();
   }

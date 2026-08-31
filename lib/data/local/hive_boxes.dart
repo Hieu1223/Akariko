@@ -33,18 +33,15 @@ class PrefKeys {
       'top_bar_height'; // double — height of the address/top bar
   static const String bottomBarHeight =
       'bottom_bar_height'; // double — height of the bottom toolbar
+  static const String perfOverlayEnabled =
+      'perf_overlay_enabled'; // bool — show the RAM/CPU bubble
+  static const String perfRefreshMs =
+      'perf_refresh_ms'; // int — monitor sampling interval
 }
 
 /// Strongly-typed keys inside the [HiveBoxes.settings] box.
 class SettingsKeys {
   const SettingsKeys._();
-
-  /// Dataset version already imported into `DictionaryEntriesTable` (int).
-  /// Bumped when the bundled dictionary asset changes so the app re-imports.
-  static const String dictionaryImportVersion = 'dictionary_import_version';
-
-  /// Number of entries written by the last successful import (int).
-  static const String dictionaryEntryCount = 'dictionary_entry_count';
 
   /// Most-recently-opened dictionary entry ids, newest first (`List<String>`).
   static const String dictionaryRecentIds = 'dictionary_recent_ids';

@@ -23,6 +23,8 @@ class UiPrefs {
     this.tabSwipeToClose = true,
     this.topBarHeight = 48,
     this.bottomBarHeight = 44,
+    this.perfOverlayEnabled = false,
+    this.perfRefreshMs = 1000,
   });
 
   final ThemeMode themeMode;
@@ -39,6 +41,8 @@ class UiPrefs {
   final bool tabSwipeToClose;
   final double topBarHeight;
   final double bottomBarHeight;
+  final bool perfOverlayEnabled;
+  final int perfRefreshMs;
 
   static const String _defaultChatGptPrompt =
       'Explain the following Japanese text in simple, beginner-friendly terms. '
@@ -60,6 +64,8 @@ class UiPrefs {
     bool? tabSwipeToClose,
     double? topBarHeight,
     double? bottomBarHeight,
+    bool? perfOverlayEnabled,
+    int? perfRefreshMs,
   }) =>
       UiPrefs(
         themeMode: themeMode ?? this.themeMode,
@@ -76,6 +82,8 @@ class UiPrefs {
         tabSwipeToClose: tabSwipeToClose ?? this.tabSwipeToClose,
         topBarHeight: topBarHeight ?? this.topBarHeight,
         bottomBarHeight: bottomBarHeight ?? this.bottomBarHeight,
+        perfOverlayEnabled: perfOverlayEnabled ?? this.perfOverlayEnabled,
+        perfRefreshMs: perfRefreshMs ?? this.perfRefreshMs,
       );
 }
 
@@ -113,6 +121,9 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
         _box.get(PrefKeys.topBarHeight, defaultValue: 48.0);
     final bottomBarHeight =
         _box.get(PrefKeys.bottomBarHeight, defaultValue: 44.0);
+    final perfOverlay =
+        _box.get(PrefKeys.perfOverlayEnabled, defaultValue: false);
+    final refreshMs = _box.get(PrefKeys.perfRefreshMs, defaultValue: 1000);
     return UiPrefs(
       themeMode: switch (themeName) {
         'light' => ThemeMode.light,
@@ -134,6 +145,8 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
       tabSwipeToClose: swipeToClose as bool,
       topBarHeight: (topBarHeight as num).toDouble(),
       bottomBarHeight: (bottomBarHeight as num).toDouble(),
+      perfOverlayEnabled: perfOverlay as bool,
+      perfRefreshMs: (refreshMs as num).toInt(),
     );
   }
 
@@ -217,5 +230,16 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
     final v = value.clamp(36.0, 120.0);
     await _box.put(PrefKeys.bottomBarHeight, v);
     state = state.copyWith(bottomBarHeight: v);
+  }
+
+  Future<void> setPerfOverlayEnabled(bool enabled) async {
+    await _box.put(PrefKeys.perfOverlayEnabled, enabled);
+    state = state.copyWith(perfOverlayEnabled: enabled);
+  }
+
+  Future<void> setPerfRefreshMs(int ms) async {
+    final v = ms.clamp(250, 5000);
+    await _box.put(PrefKeys.perfRefreshMs, v);
+    state = state.copyWith(perfRefreshMs: v);
   }
 }

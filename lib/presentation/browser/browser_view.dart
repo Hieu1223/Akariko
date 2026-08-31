@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/ui_prefs_notifier.dart';
 import '../../core/constants/routes.dart';
+import '../../data/models/tab_model.dart';
 import '../../modules/download_module.dart';
 import '../common_widgets/bottom_toolbar.dart';
 import '../common_widgets/popup_dictionary_card.dart';
@@ -12,6 +13,7 @@ import '../common_widgets/safari_address_bar.dart';
 import 'browser_viewmodel.dart';
 import 'browser_nav_state.dart';
 import 'new_tab_view.dart';
+import 'perf_overlay.dart';
 
 /// Main browser shell: address bar + (WebView | Home) + bottom toolbar.
 class BrowserView extends ConsumerWidget {
@@ -19,11 +21,22 @@ class BrowserView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vm = ref.watch(browserViewModelProvider);
+    // Only the fields the shell actually depends on — not the whole
+    // [BrowserState]. Title/url churn on a background tab must NOT rebuild this
+    // widget (and the retained WebViews), only [BrowserNavState] ticks do.
     final vmNotifier = ref.read(browserViewModelProvider.notifier);
     final prefs = ref.watch(uiPrefsProvider);
-    final active = vm.activeTab;
-    final showHome = active == null || active.url == 'about:home';
+    final activeTabId =
+        ref.watch(browserViewModelProvider.select((s) => s.activeTabId));
+    final activeUrl = ref.watch(
+      browserViewModelProvider.select((s) => s.activeTab?.url ?? ''),
+    );
+    final tabCount =
+        ref.watch(browserViewModelProvider.select((s) => s.tabs.length));
+    final showHome = activeUrl == 'about:home' || activeUrl.isEmpty;
+    final showPerfOverlay = ref.watch(
+      uiPrefsProvider.select((s) => s.perfOverlayEnabled),
+    );
 
     // The address bar depends on the volatile nav state (loading / progress /
     // bookmark), so it is a Consumer: a progress tick rebuilds only this widget,
@@ -44,7 +57,7 @@ class BrowserView extends ConsumerWidget {
               size: 18,
             ),
             onPressed: () {
-              if (active != null && !showHome) {
+              if (activeTabId.isNotEmpty && !showHome) {
                 vmNotifier.onToggleBookmark();
               }
             },
@@ -63,39 +76,29 @@ class BrowserView extends ConsumerWidget {
       ),
     );
 
-    // One WebView per cached tab, kept mounted (but hidden) so switching is
-    // instant. Only the active one is visible; the rest retain their page state
-    // off-screen until they age out of the cache.
-    final webViews = vm.cachedTabIds.map((id) {
-      final tab = vm.tabs.where((t) => t.id == id).firstOrNull;
-      if (tab == null) return const SizedBox.shrink();
-      final isActive = id == vm.activeTabId;
-      return Offstage(
-        offstage: !isActive,
-        child: _TabWebView(
-          key: ValueKey(id),
-          tabId: id,
-          initialUrl: tab.url,
-          vm: vmNotifier,
-          onDownload: (url) {
-            ref.read(manageDownloadsUsecaseProvider).enqueue(url);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Downloading $url')),
-            );
-          },
-        ),
-      );
-    }).toList();
-
+    // The WebView stack rebuilds only when the *set* of cached tabs changes
+    // (tab switch / open / close) — never on a title or background-URL update.
     final content = SizedBox.expand(
-      child: Stack(
-        children: [
-          ...webViews,
-          if (showHome)
-            const Positioned.fill(child: NewTabView())
-          else
-            const Positioned.fill(child: PopupDictionaryOverlay()),
-        ],
+      child: Consumer(
+        builder: (ctx, ref, _) {
+          final cachedIds = ref.watch(
+            browserViewModelProvider.select((s) => s.cachedTabIds),
+          );
+          // Read current tabs once; this closure only re-runs when cachedIds
+          // changes, at which point the url for any new tab is already known.
+          final tabs = ref.read(browserViewModelProvider).tabs;
+          return Stack(
+            children: [
+              for (final id in cachedIds)
+                _webViewTile(id, tabs, vmNotifier, activeTabId),
+              if (showHome)
+                const Positioned.fill(child: NewTabView())
+              else
+                const Positioned.fill(child: PopupDictionaryOverlay()),
+              if (showPerfOverlay) const PerfOverlay(),
+            ],
+          );
+        },
       ),
     );
 
@@ -107,29 +110,29 @@ class BrowserView extends ConsumerWidget {
             if (prefs.addressBarPosition == AddressBarPosition.top) chrome,
             Expanded(child: content),
             if (prefs.addressBarPosition == AddressBarPosition.bottom) chrome,
-              // Back/forward availability is volatile nav state; keep it in a
-              // Consumer so only the toolbar rebuilds on a history change.
-              Consumer(
-                builder: (ctx, ref, _) {
-                  final nav = ref.watch(browserNavProvider);
-                  return BottomToolbar(
-                    tabCount: vm.tabs.length,
-                    canGoBack: nav.canGoBack,
-                    height: prefs.bottomBarHeight,
-                    onBack: vmNotifier.hasActiveController
-                        ? () => vmNotifier.goBack()
-                        : () {},
-                    onReload: vmNotifier.hasActiveController
-                        ? () => vmNotifier.reload()
-                        : () {},
-                    onNewTab: () => vmNotifier.openNewTab(),
-                    onTabs: () {
-                      context.pushNamed(Routes.tabSwitcher);
-                    },
-                    onMenu: () => _openMenu(context, ref),
-                  );
-                },
-              ),
+            // Back/forward availability is volatile nav state; keep it in a
+            // Consumer so only the toolbar rebuilds on a history change.
+            Consumer(
+              builder: (ctx, ref, _) {
+                final nav = ref.watch(browserNavProvider);
+                return BottomToolbar(
+                  tabCount: tabCount,
+                  canGoBack: nav.canGoBack,
+                  height: prefs.bottomBarHeight,
+                  onBack: vmNotifier.hasActiveController
+                      ? () => vmNotifier.goBack()
+                      : () {},
+                  onReload: vmNotifier.hasActiveController
+                      ? () => vmNotifier.reload()
+                      : () {},
+                  onNewTab: () => vmNotifier.openNewTab(),
+                  onTabs: () {
+                    context.pushNamed(Routes.tabSwitcher);
+                  },
+                  onMenu: () => _openMenu(context, ref),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -147,6 +150,33 @@ class BrowserView extends ConsumerWidget {
         }
       },
       child: scaffold,
+    );
+  }
+
+  Widget _webViewTile(
+    String id,
+    List<TabModel> tabs,
+    BrowserViewModel vm,
+    String activeTabId,
+  ) {
+    // `tabs` is read once per rebuild of the WebView stack (only on cache
+    // changes), so a linear scan here is negligible.
+    String url = 'about:blank';
+    for (final t in tabs) {
+      if (t.id == id) {
+        url = t.url;
+        break;
+      }
+    }
+    final isActive = id == activeTabId;
+    return Offstage(
+      offstage: !isActive,
+      child: _TabWebView(
+        key: ValueKey(id),
+        tabId: id,
+        initialUrl: url,
+        vm: vm,
+      ),
     );
   }
 
@@ -213,13 +243,11 @@ class _TabWebView extends StatefulWidget {
     required this.tabId,
     required this.initialUrl,
     required this.vm,
-    required this.onDownload,
   });
 
   final String tabId;
   final String initialUrl;
   final BrowserViewModel vm;
-  final void Function(String) onDownload;
 
   @override
   State<_TabWebView> createState() => _TabWebViewState();
@@ -255,8 +283,15 @@ class _TabWebViewState extends State<_TabWebView> {
       onScrollChanged: (c, x, y) => widget.vm.onScrollChanged(widget.tabId, y),
       onUpdateVisitedHistory: (c, url, reload) =>
           widget.vm.onUpdateVisitedHistory(widget.tabId, url, reload),
-      onDownloadStartRequest: (c, request) =>
-          widget.onDownload(request.url.toString()),
+      onDownloadStartRequest: (c, request) {
+        final url = request.url.toString();
+        ProviderScope.containerOf(context)
+            .read(manageDownloadsUsecaseProvider)
+            .enqueue(url);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Downloading $url')),
+        );
+      },
     );
   }
 }

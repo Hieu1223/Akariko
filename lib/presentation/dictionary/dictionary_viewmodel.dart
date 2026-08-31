@@ -4,9 +4,7 @@ import '../../core/utils/debouncer.dart';
 import '../../data/models/word_entry.dart';
 import '../../data/repositories/dictionary_repository.dart';
 import '../../modules/dictionary_module.dart';
-import '../../modules/usecases/import_dictionary_usecase.dart';
 import '../../modules/usecases/lookup_word_usecase.dart';
-import 'dictionary_import_viewmodel.dart';
 
 /// State of the Dictionary browse/search screen (§7.6).
 class DictionaryState {
@@ -84,18 +82,10 @@ class DictionaryViewModel extends AutoDisposeNotifier<DictionaryState> {
       _debouncer.cancel();
     });
 
-    // The dataset lands asynchronously on first run; refresh once it is in.
-    ref.listen<DictionaryImportProgress>(dictionaryImportProvider,
-        (previous, next) {
-      if (next.stage == DictionaryImportStage.done &&
-          previous?.stage != DictionaryImportStage.done) {
-        refresh();
-      }
-    });
-
+    // The dictionary is decoded and ready before the app starts, so just load
+    // the entry count + recent lookups.
     Future.microtask(() {
       if (_disposed) return;
-      ref.read(dictionaryImportProvider.notifier).ensureImported();
       refresh();
     });
 

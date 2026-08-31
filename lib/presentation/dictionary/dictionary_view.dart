@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/routes.dart';
 import '../../data/models/word_entry.dart';
-import '../../modules/usecases/import_dictionary_usecase.dart';
-import 'dictionary_import_viewmodel.dart';
 import 'dictionary_viewmodel.dart';
 
 /// Dictionary browse/search screen (§7.6).
@@ -49,7 +47,6 @@ class _DictionaryViewState extends ConsumerState<DictionaryView> {
   Widget build(BuildContext context) {
     final vm = ref.watch(dictionaryViewModelProvider);
     final notifier = ref.read(dictionaryViewModelProvider.notifier);
-    final importProgress = ref.watch(dictionaryImportProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,7 +88,6 @@ class _DictionaryViewState extends ConsumerState<DictionaryView> {
               onChanged: notifier.setQuery,
             ),
           ),
-          _ImportBanner(progress: importProgress),
           Expanded(child: _buildBody(context, vm)),
         ],
       ),
@@ -234,65 +230,7 @@ class _WordEntryTile extends StatelessWidget {
   }
 }
 
-/// Progress strip for the one-time dataset import (~190k entries).
-class _ImportBanner extends ConsumerWidget {
-  const _ImportBanner({required this.progress});
 
-  final DictionaryImportProgress progress;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (progress.stage == DictionaryImportStage.idle ||
-        progress.stage == DictionaryImportStage.done) {
-      return const SizedBox.shrink();
-    }
-
-    if (progress.stage == DictionaryImportStage.failed) {
-      return Container(
-        width: double.infinity,
-        color: Theme.of(context).colorScheme.errorContainer,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Dictionary import failed: ${progress.error ?? 'unknown error'}',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: ref.read(dictionaryImportProvider.notifier).reimport,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final label = switch (progress.stage) {
-      DictionaryImportStage.preparing => 'Preparing dictionary…',
-      DictionaryImportStage.indexing => 'Building search index…',
-      _ => progress.total > 0
-          ? 'Importing dictionary — '
-              '${_formatCount(progress.imported)} / ${_formatCount(progress.total)}'
-          : 'Importing dictionary…',
-    };
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 6),
-          LinearProgressIndicator(value: progress.fraction),
-        ],
-      ),
-    );
-  }
-}
 
 class _EmptyMessage extends StatelessWidget {
   const _EmptyMessage({

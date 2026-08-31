@@ -1166,319 +1166,6 @@ class BookmarksTableCompanion extends UpdateCompanion<BookmarkRow> {
   }
 }
 
-class $DictionaryEntriesTableTable extends DictionaryEntriesTable
-    with TableInfo<$DictionaryEntriesTableTable, DictionaryEntryRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $DictionaryEntriesTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _headwordMeta = const VerificationMeta(
-    'headword',
-  );
-  @override
-  late final GeneratedColumn<String> headword = GeneratedColumn<String>(
-    'headword',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _readingMeta = const VerificationMeta(
-    'reading',
-  );
-  @override
-  late final GeneratedColumn<String> reading = GeneratedColumn<String>(
-    'reading',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(''),
-  );
-  static const VerificationMeta _meaningsJsonMeta = const VerificationMeta(
-    'meaningsJson',
-  );
-  @override
-  late final GeneratedColumn<String> meaningsJson = GeneratedColumn<String>(
-    'meanings_json',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('[]'),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, headword, reading, meaningsJson];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'dictionary_entries_table';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<DictionaryEntryRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('headword')) {
-      context.handle(
-        _headwordMeta,
-        headword.isAcceptableOrUnknown(data['headword']!, _headwordMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_headwordMeta);
-    }
-    if (data.containsKey('reading')) {
-      context.handle(
-        _readingMeta,
-        reading.isAcceptableOrUnknown(data['reading']!, _readingMeta),
-      );
-    }
-    if (data.containsKey('meanings_json')) {
-      context.handle(
-        _meaningsJsonMeta,
-        meaningsJson.isAcceptableOrUnknown(
-          data['meanings_json']!,
-          _meaningsJsonMeta,
-        ),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  DictionaryEntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return DictionaryEntryRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      headword: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}headword'],
-      )!,
-      reading: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}reading'],
-      )!,
-      meaningsJson: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}meanings_json'],
-      )!,
-    );
-  }
-
-  @override
-  $DictionaryEntriesTableTable createAlias(String alias) {
-    return $DictionaryEntriesTableTable(attachedDatabase, alias);
-  }
-}
-
-class DictionaryEntryRow extends DataClass
-    implements Insertable<DictionaryEntryRow> {
-  final String id;
-  final String headword;
-  final String reading;
-  final String meaningsJson;
-  const DictionaryEntryRow({
-    required this.id,
-    required this.headword,
-    required this.reading,
-    required this.meaningsJson,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['headword'] = Variable<String>(headword);
-    map['reading'] = Variable<String>(reading);
-    map['meanings_json'] = Variable<String>(meaningsJson);
-    return map;
-  }
-
-  DictionaryEntriesTableCompanion toCompanion(bool nullToAbsent) {
-    return DictionaryEntriesTableCompanion(
-      id: Value(id),
-      headword: Value(headword),
-      reading: Value(reading),
-      meaningsJson: Value(meaningsJson),
-    );
-  }
-
-  factory DictionaryEntryRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return DictionaryEntryRow(
-      id: serializer.fromJson<String>(json['id']),
-      headword: serializer.fromJson<String>(json['headword']),
-      reading: serializer.fromJson<String>(json['reading']),
-      meaningsJson: serializer.fromJson<String>(json['meaningsJson']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'headword': serializer.toJson<String>(headword),
-      'reading': serializer.toJson<String>(reading),
-      'meaningsJson': serializer.toJson<String>(meaningsJson),
-    };
-  }
-
-  DictionaryEntryRow copyWith({
-    String? id,
-    String? headword,
-    String? reading,
-    String? meaningsJson,
-  }) => DictionaryEntryRow(
-    id: id ?? this.id,
-    headword: headword ?? this.headword,
-    reading: reading ?? this.reading,
-    meaningsJson: meaningsJson ?? this.meaningsJson,
-  );
-  DictionaryEntryRow copyWithCompanion(DictionaryEntriesTableCompanion data) {
-    return DictionaryEntryRow(
-      id: data.id.present ? data.id.value : this.id,
-      headword: data.headword.present ? data.headword.value : this.headword,
-      reading: data.reading.present ? data.reading.value : this.reading,
-      meaningsJson: data.meaningsJson.present
-          ? data.meaningsJson.value
-          : this.meaningsJson,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DictionaryEntryRow(')
-          ..write('id: $id, ')
-          ..write('headword: $headword, ')
-          ..write('reading: $reading, ')
-          ..write('meaningsJson: $meaningsJson')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, headword, reading, meaningsJson);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is DictionaryEntryRow &&
-          other.id == this.id &&
-          other.headword == this.headword &&
-          other.reading == this.reading &&
-          other.meaningsJson == this.meaningsJson);
-}
-
-class DictionaryEntriesTableCompanion
-    extends UpdateCompanion<DictionaryEntryRow> {
-  final Value<String> id;
-  final Value<String> headword;
-  final Value<String> reading;
-  final Value<String> meaningsJson;
-  final Value<int> rowid;
-  const DictionaryEntriesTableCompanion({
-    this.id = const Value.absent(),
-    this.headword = const Value.absent(),
-    this.reading = const Value.absent(),
-    this.meaningsJson = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  DictionaryEntriesTableCompanion.insert({
-    required String id,
-    required String headword,
-    this.reading = const Value.absent(),
-    this.meaningsJson = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       headword = Value(headword);
-  static Insertable<DictionaryEntryRow> custom({
-    Expression<String>? id,
-    Expression<String>? headword,
-    Expression<String>? reading,
-    Expression<String>? meaningsJson,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (headword != null) 'headword': headword,
-      if (reading != null) 'reading': reading,
-      if (meaningsJson != null) 'meanings_json': meaningsJson,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  DictionaryEntriesTableCompanion copyWith({
-    Value<String>? id,
-    Value<String>? headword,
-    Value<String>? reading,
-    Value<String>? meaningsJson,
-    Value<int>? rowid,
-  }) {
-    return DictionaryEntriesTableCompanion(
-      id: id ?? this.id,
-      headword: headword ?? this.headword,
-      reading: reading ?? this.reading,
-      meaningsJson: meaningsJson ?? this.meaningsJson,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (headword.present) {
-      map['headword'] = Variable<String>(headword.value);
-    }
-    if (reading.present) {
-      map['reading'] = Variable<String>(reading.value);
-    }
-    if (meaningsJson.present) {
-      map['meanings_json'] = Variable<String>(meaningsJson.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DictionaryEntriesTableCompanion(')
-          ..write('id: $id, ')
-          ..write('headword: $headword, ')
-          ..write('reading: $reading, ')
-          ..write('meaningsJson: $meaningsJson, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $DecksTableTable extends DecksTable
     with TableInfo<$DecksTableTable, DecksTableData> {
   @override
@@ -4706,8 +4393,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TabsTableTable tabsTable = $TabsTableTable(this);
   late final $HistoryTableTable historyTable = $HistoryTableTable(this);
   late final $BookmarksTableTable bookmarksTable = $BookmarksTableTable(this);
-  late final $DictionaryEntriesTableTable dictionaryEntriesTable =
-      $DictionaryEntriesTableTable(this);
   late final $DecksTableTable decksTable = $DecksTableTable(this);
   late final $FlashcardsTableTable flashcardsTable = $FlashcardsTableTable(
     this,
@@ -4724,16 +4409,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $NewsArticlesTableTable(this);
   late final $PasswordEntriesTableTable passwordEntriesTable =
       $PasswordEntriesTableTable(this);
-  late final Index idxDictHeadword = Index(
-    'idx_dict_headword',
-    'CREATE INDEX idx_dict_headword ON dictionary_entries_table (headword)',
+  late final Index idxTabsLastActiveAt = Index(
+    'idx_tabs_last_active_at',
+    'CREATE INDEX idx_tabs_last_active_at ON tabs_table (last_active_at)',
   );
-  late final Index idxDictReading = Index(
-    'idx_dict_reading',
-    'CREATE INDEX idx_dict_reading ON dictionary_entries_table (reading)',
+  late final Index idxHistoryVisitedAt = Index(
+    'idx_history_visited_at',
+    'CREATE INDEX idx_history_visited_at ON history_table (visited_at)',
   );
   late final BrowserDao browserDao = BrowserDao(this as AppDatabase);
-  late final DictionaryDao dictionaryDao = DictionaryDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4742,7 +4426,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tabsTable,
     historyTable,
     bookmarksTable,
-    dictionaryEntriesTable,
     decksTable,
     flashcardsTable,
     reviewLogsTable,
@@ -4750,8 +4433,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     newsSourcesTable,
     newsArticlesTable,
     passwordEntriesTable,
-    idxDictHeadword,
-    idxDictReading,
+    idxTabsLastActiveAt,
+    idxHistoryVisitedAt,
   ];
 }
 
@@ -5393,208 +5076,6 @@ typedef $$BookmarksTableTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $BookmarksTableTable, BookmarkRow>,
       ),
       BookmarkRow,
-      PrefetchHooks Function()
-    >;
-typedef $$DictionaryEntriesTableTableCreateCompanionBuilder =
-    DictionaryEntriesTableCompanion Function({
-      required String id,
-      required String headword,
-      Value<String> reading,
-      Value<String> meaningsJson,
-      Value<int> rowid,
-    });
-typedef $$DictionaryEntriesTableTableUpdateCompanionBuilder =
-    DictionaryEntriesTableCompanion Function({
-      Value<String> id,
-      Value<String> headword,
-      Value<String> reading,
-      Value<String> meaningsJson,
-      Value<int> rowid,
-    });
-
-class $$DictionaryEntriesTableTableFilterComposer
-    extends Composer<_$AppDatabase, $DictionaryEntriesTableTable> {
-  $$DictionaryEntriesTableTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get headword => $composableBuilder(
-    column: $table.headword,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get reading => $composableBuilder(
-    column: $table.reading,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get meaningsJson => $composableBuilder(
-    column: $table.meaningsJson,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$DictionaryEntriesTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $DictionaryEntriesTableTable> {
-  $$DictionaryEntriesTableTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get headword => $composableBuilder(
-    column: $table.headword,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get reading => $composableBuilder(
-    column: $table.reading,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get meaningsJson => $composableBuilder(
-    column: $table.meaningsJson,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$DictionaryEntriesTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $DictionaryEntriesTableTable> {
-  $$DictionaryEntriesTableTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get headword =>
-      $composableBuilder(column: $table.headword, builder: (column) => column);
-
-  GeneratedColumn<String> get reading =>
-      $composableBuilder(column: $table.reading, builder: (column) => column);
-
-  GeneratedColumn<String> get meaningsJson => $composableBuilder(
-    column: $table.meaningsJson,
-    builder: (column) => column,
-  );
-}
-
-class $$DictionaryEntriesTableTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $DictionaryEntriesTableTable,
-          DictionaryEntryRow,
-          $$DictionaryEntriesTableTableFilterComposer,
-          $$DictionaryEntriesTableTableOrderingComposer,
-          $$DictionaryEntriesTableTableAnnotationComposer,
-          $$DictionaryEntriesTableTableCreateCompanionBuilder,
-          $$DictionaryEntriesTableTableUpdateCompanionBuilder,
-          (
-            DictionaryEntryRow,
-            BaseReferences<
-              _$AppDatabase,
-              $DictionaryEntriesTableTable,
-              DictionaryEntryRow
-            >,
-          ),
-          DictionaryEntryRow,
-          PrefetchHooks Function()
-        > {
-  $$DictionaryEntriesTableTableTableManager(
-    _$AppDatabase db,
-    $DictionaryEntriesTableTable table,
-  ) : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$DictionaryEntriesTableTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
-          createOrderingComposer: () =>
-              $$DictionaryEntriesTableTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer: () =>
-              $$DictionaryEntriesTableTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> headword = const Value.absent(),
-                Value<String> reading = const Value.absent(),
-                Value<String> meaningsJson = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => DictionaryEntriesTableCompanion(
-                id: id,
-                headword: headword,
-                reading: reading,
-                meaningsJson: meaningsJson,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String headword,
-                Value<String> reading = const Value.absent(),
-                Value<String> meaningsJson = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => DictionaryEntriesTableCompanion.insert(
-                id: id,
-                headword: headword,
-                reading: reading,
-                meaningsJson: meaningsJson,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$DictionaryEntriesTableTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $DictionaryEntriesTableTable,
-      DictionaryEntryRow,
-      $$DictionaryEntriesTableTableFilterComposer,
-      $$DictionaryEntriesTableTableOrderingComposer,
-      $$DictionaryEntriesTableTableAnnotationComposer,
-      $$DictionaryEntriesTableTableCreateCompanionBuilder,
-      $$DictionaryEntriesTableTableUpdateCompanionBuilder,
-      (
-        DictionaryEntryRow,
-        BaseReferences<
-          _$AppDatabase,
-          $DictionaryEntriesTableTable,
-          DictionaryEntryRow
-        >,
-      ),
-      DictionaryEntryRow,
       PrefetchHooks Function()
     >;
 typedef $$DecksTableTableCreateCompanionBuilder =
@@ -7384,11 +6865,6 @@ class $AppDatabaseManager {
       $$HistoryTableTableTableManager(_db, _db.historyTable);
   $$BookmarksTableTableTableManager get bookmarksTable =>
       $$BookmarksTableTableTableManager(_db, _db.bookmarksTable);
-  $$DictionaryEntriesTableTableTableManager get dictionaryEntriesTable =>
-      $$DictionaryEntriesTableTableTableManager(
-        _db,
-        _db.dictionaryEntriesTable,
-      );
   $$DecksTableTableTableManager get decksTable =>
       $$DecksTableTableTableManager(_db, _db.decksTable);
   $$FlashcardsTableTableTableManager get flashcardsTable =>

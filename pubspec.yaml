@@ -49,6 +49,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    # Bundled dictionary dataset, imported into DictionaryEntriesTable on first
-    # use (phase 3). ~50 MB / ~190k entries, parsed off the UI isolate.
-    - lib/asset/dictionary.json
+    # Prebuilt, compressed in-memory dictionary trie (word, kana, meaning) built
+    # by `tool/build_dictionary.dart`. Decoded once at startup into an in-memory
+    # prefix trie — no SQLite table, no on-device JSON parse.
+    - lib/asset/dictionary.dat

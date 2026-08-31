@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 /// Open browser tabs. The active tab is referenced by [BrowserViewModel].
 @DataClassName('TabRow')
+@TableIndex(name: 'idx_tabs_last_active_at', columns: {#lastActiveAt})
 class TabsTable extends Table {
   TextColumn get id => text()();
 

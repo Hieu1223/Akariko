@@ -13,6 +13,14 @@ class ManageDownloadsUsecase {
   final DownloadRepository _repository;
   final DownloadEngineService _engine;
 
+  /// Per-download timestamp of the last progress write, so we don't hammer the
+  /// database (and the `watchItems()` stream that rebuilds the list) on every
+  /// network chunk — chunks can arrive hundreds of times per second.
+  final Map<String, int> _lastProgressAt = {};
+
+  /// Minimum gap between two progress writes for the same download.
+  static const int _progressWriteIntervalMs = 200;
+
   Stream<List<DownloadItem>> watch() => _repository.watchItems();
 
   /// Adds a URL to the download manager and begins fetching it immediately.
@@ -39,23 +47,38 @@ class ManageDownloadsUsecase {
       savePath: savePath,
       resumeFrom: resumeFrom,
       onProgress: (received, total, progress) {
-        _repository.updateProgress(
-          id,
-          progress: progress,
-          totalBytes: total ?? 0,
-          status: 'downloading',
-        );
+        _throttledProgress(id, total, progress);
       },
       onDone: () {
+        _lastProgressAt.remove(id);
         _repository.updateProgress(id, progress: 1.0, status: 'done');
       },
       onError: (_) {
+        _lastProgressAt.remove(id);
         _repository.updateStatus(id, 'failed');
       },
       onCancel: () {
         // Status is already moved to "paused" by [pause] when aborted.
       },
     );
+  }
+
+  /// Coalesces progress updates: writes to the repository at most every
+  /// [_progressWriteIntervalMs], plus an immediate write when the download
+  /// completes (progress >= 1.0) or on the first update.
+  void _throttledProgress(String id, int? total, double progress) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final last = _lastProgressAt[id] ?? 0;
+    final due = (now - last) >= _progressWriteIntervalMs;
+    if (due || progress >= 1.0) {
+      _lastProgressAt[id] = now;
+      _repository.updateProgress(
+        id,
+        progress: progress,
+        totalBytes: total ?? 0,
+        status: 'downloading',
+      );
+    }
   }
 
   /// Pauses an in-flight download (resumable later if the server allows Range).

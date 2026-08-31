@@ -1,29 +1,34 @@
-import 'package:arisu_browser/data/datasources/local/dictionary_import_datasource.dart';
+import 'dart:io';
+
+import 'package:arisu_browser/data/datasources/local/dictionary_binary.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards the bundled dataset itself: the asset must stay declared in
-/// `pubspec.yaml` under [kDictionaryAssetKey] and keep the shape the importer
-/// expects. Without this, a mis-declared asset would only surface as an empty
-/// dictionary at runtime.
+/// Guards the prebuilt trie asset: it must stay declared in `pubspec.yaml`
+/// (under `lib/asset/dictionary.dat`), decode, and actually answer searches.
+/// A mis-declared or stale asset would only surface as an empty dictionary at
+/// runtime, so we verify it here.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('bundled dictionary asset is declared and parses', () async {
-    final data = await rootBundle.load(kDictionaryAssetKey);
+  test('bundled trie asset decodes and searches', () async {
+    final data = await rootBundle.load('lib/asset/dictionary.dat');
     final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 
-    final total = countDatasetEntries(bytes);
-    expect(total, greaterThan(100000),
+    final decoded = decodeDictionary(
+      Uint8List.fromList(GZipCodec().decode(bytes)),
+    );
+
+    expect(decoded.entryCount, greaterThan(100000),
         reason: 'the shipped dataset holds ~190k entries');
 
-    // Parsing is lazy, so only the first slice is materialised here.
-    final sample = parseDictionaryEntries(bytes).take(500).toList();
-    expect(sample, hasLength(500));
-    expect(sample.every((e) => e.id.isNotEmpty), isTrue);
-    expect(sample.every((e) => e.headword.isNotEmpty), isTrue);
-    expect(sample.where((e) => e.meanings.isNotEmpty).length, greaterThan(400));
-    // Ids are the dataset's primary key — duplicates would drop rows on import.
-    expect(sample.map((e) => e.id).toSet(), hasLength(500));
+    // A Japanese prefix should return headword hits.
+    final jp = decoded.search('日本');
+    expect(jp.entries, isNotEmpty);
+    expect(jp.entries.first.headword, isNotEmpty);
+
+    // A latin/meaning query should also return hits.
+    final en = decoded.search('water');
+    expect(en.entries, isNotEmpty);
   });
 }
