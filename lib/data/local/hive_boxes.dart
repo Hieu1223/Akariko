@@ -17,6 +17,18 @@ class PrefKeys {
   static const String addressBarPosition = 'address_bar_position'; // 'top'|'bottom'
   static const String locale = 'locale'; // 'system' | 'en' | 'ja' | 'vi'
   static const String ocrEnabled = 'ocr_enabled'; // bool
+  static const String chatGptPrompt =
+      'chatgpt_prompt'; // String template, {text} placeholder
+  static const String autoHideChrome =
+      'auto_hide_chrome'; // bool — collapse bars on scroll
+  static const String maxTabHistory =
+      'max_tab_history'; // int — per-tab history stack size
+  static const String cachedTabCount =
+      'cached_tab_count'; // int — tabs retaining live page state
+  static const String tabPageTimeoutSec =
+      'tab_page_timeout_sec'; // int — release page data after idle
+  static const String tabSwipeToClose =
+      'tab_swipe_to_close'; // bool — swipe to delete in tab switcher
 }
 
 /// Strongly-typed keys inside the [HiveBoxes.settings] box.

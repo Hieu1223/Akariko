@@ -79,7 +79,6 @@ void main() {
       expect(entries.first.headword, '遠慮する');
       expect(entries.first.reading, 'えんりょする');
       expect(entries.first.meanings, ['dè dặt', 'làm khách']);
-      expect(entries.first.sourcePack, 'jp_vn');
       expect(entries.last.headword, 'おーい');
       expect(entries.last.reading, isEmpty);
       expect(entries.last.meanings, ['ahoy', 'hullo']);
@@ -131,7 +130,6 @@ void main() {
 
       expect(entry, isNotNull);
       expect(entry!.id, 'よむ-1');
-      expect(entry.sourcePack, 'default');
     });
   });
 

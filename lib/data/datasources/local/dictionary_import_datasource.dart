@@ -303,16 +303,11 @@ WordEntry? wordEntryFromDataset(Map<String, dynamic> json) {
   final id = json['id']?.toString() ?? json['slug']?.toString();
   if (id == null || id.isEmpty) return null;
 
-  final type = json['type'];
-  final sourcePack =
-      (type is Map && type['tag'] is String) ? type['tag'] as String : 'default';
-
   return WordEntry(
     id: id,
     headword: headword,
     reading: (json['kana'] as String?)?.trim() ?? '',
     meanings: parseMeanings(json['suggest_mean'] as String?),
-    sourcePack: sourcePack,
   );
 }
 

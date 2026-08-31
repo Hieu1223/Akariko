@@ -1204,16 +1204,6 @@ class $DictionaryEntriesTableTable extends DictionaryEntriesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  static const VerificationMeta _posMeta = const VerificationMeta('pos');
-  @override
-  late final GeneratedColumn<String> pos = GeneratedColumn<String>(
-    'pos',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(''),
-  );
   static const VerificationMeta _meaningsJsonMeta = const VerificationMeta(
     'meaningsJson',
   );
@@ -1226,27 +1216,8 @@ class $DictionaryEntriesTableTable extends DictionaryEntriesTable
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   );
-  static const VerificationMeta _sourcePackMeta = const VerificationMeta(
-    'sourcePack',
-  );
   @override
-  late final GeneratedColumn<String> sourcePack = GeneratedColumn<String>(
-    'source_pack',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('default'),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    headword,
-    reading,
-    pos,
-    meaningsJson,
-    sourcePack,
-  ];
+  List<GeneratedColumn> get $columns => [id, headword, reading, meaningsJson];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1278,12 +1249,6 @@ class $DictionaryEntriesTableTable extends DictionaryEntriesTable
         reading.isAcceptableOrUnknown(data['reading']!, _readingMeta),
       );
     }
-    if (data.containsKey('pos')) {
-      context.handle(
-        _posMeta,
-        pos.isAcceptableOrUnknown(data['pos']!, _posMeta),
-      );
-    }
     if (data.containsKey('meanings_json')) {
       context.handle(
         _meaningsJsonMeta,
@@ -1291,12 +1256,6 @@ class $DictionaryEntriesTableTable extends DictionaryEntriesTable
           data['meanings_json']!,
           _meaningsJsonMeta,
         ),
-      );
-    }
-    if (data.containsKey('source_pack')) {
-      context.handle(
-        _sourcePackMeta,
-        sourcePack.isAcceptableOrUnknown(data['source_pack']!, _sourcePackMeta),
       );
     }
     return context;
@@ -1320,17 +1279,9 @@ class $DictionaryEntriesTableTable extends DictionaryEntriesTable
         DriftSqlType.string,
         data['${effectivePrefix}reading'],
       )!,
-      pos: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}pos'],
-      )!,
       meaningsJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}meanings_json'],
-      )!,
-      sourcePack: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}source_pack'],
       )!,
     );
   }
@@ -1346,16 +1297,12 @@ class DictionaryEntryRow extends DataClass
   final String id;
   final String headword;
   final String reading;
-  final String pos;
   final String meaningsJson;
-  final String sourcePack;
   const DictionaryEntryRow({
     required this.id,
     required this.headword,
     required this.reading,
-    required this.pos,
     required this.meaningsJson,
-    required this.sourcePack,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1363,9 +1310,7 @@ class DictionaryEntryRow extends DataClass
     map['id'] = Variable<String>(id);
     map['headword'] = Variable<String>(headword);
     map['reading'] = Variable<String>(reading);
-    map['pos'] = Variable<String>(pos);
     map['meanings_json'] = Variable<String>(meaningsJson);
-    map['source_pack'] = Variable<String>(sourcePack);
     return map;
   }
 
@@ -1374,9 +1319,7 @@ class DictionaryEntryRow extends DataClass
       id: Value(id),
       headword: Value(headword),
       reading: Value(reading),
-      pos: Value(pos),
       meaningsJson: Value(meaningsJson),
-      sourcePack: Value(sourcePack),
     );
   }
 
@@ -1389,9 +1332,7 @@ class DictionaryEntryRow extends DataClass
       id: serializer.fromJson<String>(json['id']),
       headword: serializer.fromJson<String>(json['headword']),
       reading: serializer.fromJson<String>(json['reading']),
-      pos: serializer.fromJson<String>(json['pos']),
       meaningsJson: serializer.fromJson<String>(json['meaningsJson']),
-      sourcePack: serializer.fromJson<String>(json['sourcePack']),
     );
   }
   @override
@@ -1401,9 +1342,7 @@ class DictionaryEntryRow extends DataClass
       'id': serializer.toJson<String>(id),
       'headword': serializer.toJson<String>(headword),
       'reading': serializer.toJson<String>(reading),
-      'pos': serializer.toJson<String>(pos),
       'meaningsJson': serializer.toJson<String>(meaningsJson),
-      'sourcePack': serializer.toJson<String>(sourcePack),
     };
   }
 
@@ -1411,29 +1350,21 @@ class DictionaryEntryRow extends DataClass
     String? id,
     String? headword,
     String? reading,
-    String? pos,
     String? meaningsJson,
-    String? sourcePack,
   }) => DictionaryEntryRow(
     id: id ?? this.id,
     headword: headword ?? this.headword,
     reading: reading ?? this.reading,
-    pos: pos ?? this.pos,
     meaningsJson: meaningsJson ?? this.meaningsJson,
-    sourcePack: sourcePack ?? this.sourcePack,
   );
   DictionaryEntryRow copyWithCompanion(DictionaryEntriesTableCompanion data) {
     return DictionaryEntryRow(
       id: data.id.present ? data.id.value : this.id,
       headword: data.headword.present ? data.headword.value : this.headword,
       reading: data.reading.present ? data.reading.value : this.reading,
-      pos: data.pos.present ? data.pos.value : this.pos,
       meaningsJson: data.meaningsJson.present
           ? data.meaningsJson.value
           : this.meaningsJson,
-      sourcePack: data.sourcePack.present
-          ? data.sourcePack.value
-          : this.sourcePack,
     );
   }
 
@@ -1443,16 +1374,13 @@ class DictionaryEntryRow extends DataClass
           ..write('id: $id, ')
           ..write('headword: $headword, ')
           ..write('reading: $reading, ')
-          ..write('pos: $pos, ')
-          ..write('meaningsJson: $meaningsJson, ')
-          ..write('sourcePack: $sourcePack')
+          ..write('meaningsJson: $meaningsJson')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, headword, reading, pos, meaningsJson, sourcePack);
+  int get hashCode => Object.hash(id, headword, reading, meaningsJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1460,9 +1388,7 @@ class DictionaryEntryRow extends DataClass
           other.id == this.id &&
           other.headword == this.headword &&
           other.reading == this.reading &&
-          other.pos == this.pos &&
-          other.meaningsJson == this.meaningsJson &&
-          other.sourcePack == this.sourcePack);
+          other.meaningsJson == this.meaningsJson);
 }
 
 class DictionaryEntriesTableCompanion
@@ -1470,26 +1396,20 @@ class DictionaryEntriesTableCompanion
   final Value<String> id;
   final Value<String> headword;
   final Value<String> reading;
-  final Value<String> pos;
   final Value<String> meaningsJson;
-  final Value<String> sourcePack;
   final Value<int> rowid;
   const DictionaryEntriesTableCompanion({
     this.id = const Value.absent(),
     this.headword = const Value.absent(),
     this.reading = const Value.absent(),
-    this.pos = const Value.absent(),
     this.meaningsJson = const Value.absent(),
-    this.sourcePack = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DictionaryEntriesTableCompanion.insert({
     required String id,
     required String headword,
     this.reading = const Value.absent(),
-    this.pos = const Value.absent(),
     this.meaningsJson = const Value.absent(),
-    this.sourcePack = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        headword = Value(headword);
@@ -1497,18 +1417,14 @@ class DictionaryEntriesTableCompanion
     Expression<String>? id,
     Expression<String>? headword,
     Expression<String>? reading,
-    Expression<String>? pos,
     Expression<String>? meaningsJson,
-    Expression<String>? sourcePack,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (headword != null) 'headword': headword,
       if (reading != null) 'reading': reading,
-      if (pos != null) 'pos': pos,
       if (meaningsJson != null) 'meanings_json': meaningsJson,
-      if (sourcePack != null) 'source_pack': sourcePack,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1517,18 +1433,14 @@ class DictionaryEntriesTableCompanion
     Value<String>? id,
     Value<String>? headword,
     Value<String>? reading,
-    Value<String>? pos,
     Value<String>? meaningsJson,
-    Value<String>? sourcePack,
     Value<int>? rowid,
   }) {
     return DictionaryEntriesTableCompanion(
       id: id ?? this.id,
       headword: headword ?? this.headword,
       reading: reading ?? this.reading,
-      pos: pos ?? this.pos,
       meaningsJson: meaningsJson ?? this.meaningsJson,
-      sourcePack: sourcePack ?? this.sourcePack,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1545,14 +1457,8 @@ class DictionaryEntriesTableCompanion
     if (reading.present) {
       map['reading'] = Variable<String>(reading.value);
     }
-    if (pos.present) {
-      map['pos'] = Variable<String>(pos.value);
-    }
     if (meaningsJson.present) {
       map['meanings_json'] = Variable<String>(meaningsJson.value);
-    }
-    if (sourcePack.present) {
-      map['source_pack'] = Variable<String>(sourcePack.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1566,9 +1472,7 @@ class DictionaryEntriesTableCompanion
           ..write('id: $id, ')
           ..write('headword: $headword, ')
           ..write('reading: $reading, ')
-          ..write('pos: $pos, ')
           ..write('meaningsJson: $meaningsJson, ')
-          ..write('sourcePack: $sourcePack, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5496,9 +5400,7 @@ typedef $$DictionaryEntriesTableTableCreateCompanionBuilder =
       required String id,
       required String headword,
       Value<String> reading,
-      Value<String> pos,
       Value<String> meaningsJson,
-      Value<String> sourcePack,
       Value<int> rowid,
     });
 typedef $$DictionaryEntriesTableTableUpdateCompanionBuilder =
@@ -5506,9 +5408,7 @@ typedef $$DictionaryEntriesTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> headword,
       Value<String> reading,
-      Value<String> pos,
       Value<String> meaningsJson,
-      Value<String> sourcePack,
       Value<int> rowid,
     });
 
@@ -5536,18 +5436,8 @@ class $$DictionaryEntriesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get pos => $composableBuilder(
-    column: $table.pos,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get meaningsJson => $composableBuilder(
     column: $table.meaningsJson,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get sourcePack => $composableBuilder(
-    column: $table.sourcePack,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5576,18 +5466,8 @@ class $$DictionaryEntriesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get pos => $composableBuilder(
-    column: $table.pos,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get meaningsJson => $composableBuilder(
     column: $table.meaningsJson,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get sourcePack => $composableBuilder(
-    column: $table.sourcePack,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -5610,16 +5490,8 @@ class $$DictionaryEntriesTableTableAnnotationComposer
   GeneratedColumn<String> get reading =>
       $composableBuilder(column: $table.reading, builder: (column) => column);
 
-  GeneratedColumn<String> get pos =>
-      $composableBuilder(column: $table.pos, builder: (column) => column);
-
   GeneratedColumn<String> get meaningsJson => $composableBuilder(
     column: $table.meaningsJson,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get sourcePack => $composableBuilder(
-    column: $table.sourcePack,
     builder: (column) => column,
   );
 }
@@ -5673,17 +5545,13 @@ class $$DictionaryEntriesTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> headword = const Value.absent(),
                 Value<String> reading = const Value.absent(),
-                Value<String> pos = const Value.absent(),
                 Value<String> meaningsJson = const Value.absent(),
-                Value<String> sourcePack = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DictionaryEntriesTableCompanion(
                 id: id,
                 headword: headword,
                 reading: reading,
-                pos: pos,
                 meaningsJson: meaningsJson,
-                sourcePack: sourcePack,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5691,17 +5559,13 @@ class $$DictionaryEntriesTableTableTableManager
                 required String id,
                 required String headword,
                 Value<String> reading = const Value.absent(),
-                Value<String> pos = const Value.absent(),
                 Value<String> meaningsJson = const Value.absent(),
-                Value<String> sourcePack = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DictionaryEntriesTableCompanion.insert(
                 id: id,
                 headword: headword,
                 reading: reading,
-                pos: pos,
                 meaningsJson: meaningsJson,
-                sourcePack: sourcePack,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

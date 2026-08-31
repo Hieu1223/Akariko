@@ -30,13 +30,13 @@ class SafariAddressBar extends StatelessWidget {
           : Colors.grey.shade100,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         child: Row(
           children: [
             if (isLoading)
               SizedBox(
-                width: 16,
-                height: 16,
+                width: 14,
+                height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   value: progress > 0 ? progress / 100 : null,
@@ -44,8 +44,8 @@ class SafariAddressBar extends StatelessWidget {
                 ),
               )
             else
-              Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade600),
-            const SizedBox(width: 8),
+              Icon(Icons.lock_outline, size: 14, color: Colors.grey.shade600),
+            const SizedBox(width: 6),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -53,7 +53,7 @@ class SafariAddressBar extends StatelessWidget {
                 onSubmitted: onSubmitted,
                 textInputAction: TextInputAction.go,
                 decoration: InputDecoration.collapsed(hintText: hintText),
-                style: const TextStyle(fontSize: 15),
+                style: const TextStyle(fontSize: 13),
               ),
             ),
             // ignore: use_null_aware_elements

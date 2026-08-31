@@ -84,14 +84,6 @@ class _EntryBody extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final tag in entry.posTags) _Chip(label: tag),
-            _Chip(label: sourcePackLabel(entry.sourcePack)),
-          ],
-        ),
         const SizedBox(height: 24),
         Text('Meanings', style: textTheme.titleSmall),
         const SizedBox(height: 8),
@@ -286,36 +278,6 @@ class _TokenRow extends StatelessWidget {
                 style: textTheme.bodySmall?.copyWith(color: Colors.grey)),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// Human-readable name for a dataset's `source_pack` tag.
-String sourcePackLabel(String sourcePack) => switch (sourcePack) {
-      'jp_vn' => 'Nhật Việt (JP → VI/EN)',
-      'default' => 'Dictionary',
-      _ => sourcePack,
-    };
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSecondaryContainer,
-            ),
       ),
     );
   }

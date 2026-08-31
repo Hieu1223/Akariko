@@ -23,7 +23,6 @@ void main() {
     expect(sample.every((e) => e.id.isNotEmpty), isTrue);
     expect(sample.every((e) => e.headword.isNotEmpty), isTrue);
     expect(sample.where((e) => e.meanings.isNotEmpty).length, greaterThan(400));
-    expect(sample.map((e) => e.sourcePack).toSet(), {'jp_vn'});
     // Ids are the dataset's primary key — duplicates would drop rows on import.
     expect(sample.map((e) => e.id).toSet(), hasLength(500));
   });

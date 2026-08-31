@@ -165,28 +165,7 @@ class _WordHeader extends StatelessWidget {
             style: textTheme.titleSmall?.copyWith(color: scheme.outline),
           ),
         ],
-        if (entry.posTags.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final tag in entry.posTags)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: scheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    tag,
-                    style: textTheme.labelSmall
-                        ?.copyWith(color: scheme.onSecondaryContainer),
-                  ),
-                ),
-            ],
-          ),
-        ],
+        const SizedBox(height: 8),
         const SizedBox(height: 8),
         Text(
           entry.shortGloss.isEmpty ? '—' : entry.shortGloss,

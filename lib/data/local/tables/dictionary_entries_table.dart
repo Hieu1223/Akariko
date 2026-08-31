@@ -10,9 +10,7 @@ class DictionaryEntriesTable extends Table {
   TextColumn get id => text()();
   TextColumn get headword => text()();
   TextColumn get reading => text().withDefault(const Constant(''))();
-  TextColumn get pos => text().withDefault(const Constant(''))();
   TextColumn get meaningsJson => text().withDefault(const Constant('[]'))();
-  TextColumn get sourcePack => text().withDefault(const Constant('default'))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

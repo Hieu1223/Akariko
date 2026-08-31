@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Bottom toolbar: Back / Forward / Share / Tabs-count / Menu.
+/// Bottom toolbar: Back / Forward / New Tab / Tabs / Menu.
 class BottomToolbar extends StatelessWidget {
   const BottomToolbar({
     super.key,
     required this.onBack,
     required this.onForward,
-    required this.onShare,
+    required this.onNewTab,
     required this.onTabs,
     required this.onMenu,
     required this.tabCount,
@@ -16,7 +16,7 @@ class BottomToolbar extends StatelessWidget {
 
   final VoidCallback onBack;
   final VoidCallback onForward;
-  final VoidCallback onShare;
+  final VoidCallback onNewTab;
   final VoidCallback onTabs;
   final VoidCallback onMenu;
   final int tabCount;
@@ -49,9 +49,15 @@ class BottomToolbar extends StatelessWidget {
                 icon: Icons.arrow_forward,
                 onPressed: canGoForward ? onForward : null,
               ),
-              _ToolButton(icon: Icons.share, onPressed: onShare),
+              _ToolButton(
+                icon: Icons.add,
+                onPressed: onNewTab,
+              ),
               _TabButton(onPressed: onTabs, count: tabCount),
-              _ToolButton(icon: Icons.more_horiz, onPressed: onMenu),
+              _ToolButton(
+                icon: Icons.more_horiz,
+                onPressed: onMenu,
+              ),
             ],
           ),
         ),

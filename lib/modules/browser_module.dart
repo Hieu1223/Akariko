@@ -19,8 +19,8 @@ class BrowserModule {
   Future<TabModel?> getTab(String id) => repository.getTab(id);
   Future<TabModel> createTab({String url = 'about:blank', String title = ''}) =>
       repository.createTab(url: url, title: title);
-  Future<void> updateTab(String id, {String? url, String? title, String? faviconUrl}) =>
-      repository.updateTab(id, url: url, title: title, faviconUrl: faviconUrl);
+  Future<void> updateTab(String id, {String? url, String? title, String? faviconUrl, String? screenshotPath}) =>
+      repository.updateTab(id, url: url, title: title, faviconUrl: faviconUrl, screenshotPath: screenshotPath);
   Future<void> closeTab(String id) => repository.closeTab(id);
   Future<void> closeAll() => repository.closeAll();
 

@@ -4,35 +4,23 @@ import '../local/app_database.dart';
 
 /// A single dictionary entry (maps from [DictionaryEntryRow]).
 ///
-/// [meanings] is the decoded form of the row's `meanings_json` column: one
-/// entry per sense, in dataset order.
+/// Trimmed to the three fields the UI needs: the headword (word), its reading
+/// (kana) and the glosses (meaning). Entries live in the Drift store on disk —
+/// never held in memory as a full list — and are paged in via search.
 class WordEntry {
   const WordEntry({
     required this.id,
     required this.headword,
     this.reading = '',
-    this.pos = '',
     this.meanings = const [],
-    this.sourcePack = 'default',
   });
 
   final String id;
   final String headword;
   final String reading;
-  final String pos;
   final List<String> meanings;
-  final String sourcePack;
 
   bool get hasReading => reading.isNotEmpty && reading != headword;
-
-  /// Comma-separated POS tags, rendered as chips on the Word Detail screen.
-  List<String> get posTags => pos.isEmpty
-      ? const []
-      : pos
-          .split(',')
-          .map((t) => t.trim())
-          .where((t) => t.isNotEmpty)
-          .toList(growable: false);
 
   /// Short gloss for list rows (§7.6): the first few senses, joined.
   String get shortGloss => meanings.take(3).join('; ');
@@ -43,9 +31,7 @@ class WordEntry {
         id: row.id,
         headword: row.headword,
         reading: row.reading,
-        pos: row.pos,
         meanings: decodeMeanings(row.meaningsJson),
-        sourcePack: row.sourcePack,
       );
 
   /// Tolerant decoder for the `meanings_json` column.

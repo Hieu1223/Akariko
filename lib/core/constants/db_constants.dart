@@ -35,7 +35,5 @@ class DbConstants {
   // content table for an external-content index).
   static const String headword = 'headword';
   static const String reading = 'reading';
-  static const String pos = 'pos';
   static const String meaningsJson = 'meanings_json';
-  static const String sourcePack = 'source_pack';
 }

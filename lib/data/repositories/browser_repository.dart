@@ -11,7 +11,7 @@ abstract class BrowserRepository {
   Future<List<TabModel>> getTabs();
   Future<TabModel?> getTab(String id);
   Future<TabModel> createTab({String url = 'about:blank', String title = ''});
-  Future<void> updateTab(String id, {String? url, String? title, String? faviconUrl});
+  Future<void> updateTab(String id, {String? url, String? title, String? faviconUrl, String? screenshotPath});
   Future<void> closeTab(String id);
   Future<void> closeAll();
 
@@ -58,7 +58,7 @@ class DriftBrowserRepository implements BrowserRepository {
   }
 
   @override
-  Future<void> updateTab(String id, {String? url, String? title, String? faviconUrl}) async {
+  Future<void> updateTab(String id, {String? url, String? title, String? faviconUrl, String? screenshotPath}) async {
     await _db.browserDao.updateTab(
       id,
       TabsTableCompanion(
@@ -66,6 +66,8 @@ class DriftBrowserRepository implements BrowserRepository {
         title: title == null ? const Value.absent() : Value(title),
         faviconUrl:
             faviconUrl == null ? const Value.absent() : Value(faviconUrl),
+        screenshotPath:
+            screenshotPath == null ? const Value.absent() : Value(screenshotPath),
         lastActiveAt: Value(DateTime.now()),
       ),
     );

@@ -15,6 +15,12 @@ class UiPrefs {
     this.addressBarPosition = AddressBarPosition.top,
     this.locale,
     this.ocrEnabled = false,
+    this.chatGptPrompt = _defaultChatGptPrompt,
+    this.autoHideChrome = true,
+    this.maxTabHistory = 20,
+    this.cachedTabCount = 2,
+    this.tabPageTimeoutSec = 30,
+    this.tabSwipeToClose = true,
   });
 
   final ThemeMode themeMode;
@@ -23,6 +29,16 @@ class UiPrefs {
   final AddressBarPosition addressBarPosition;
   final String? locale; // null => system
   final bool ocrEnabled;
+  final String chatGptPrompt;
+  final bool autoHideChrome;
+  final int maxTabHistory;
+  final int cachedTabCount;
+  final int tabPageTimeoutSec;
+  final bool tabSwipeToClose;
+
+  static const String _defaultChatGptPrompt =
+      'Explain the following Japanese text in simple, beginner-friendly terms. '
+      'Break down any grammar and list the key vocabulary:\n\n{text}';
 
   UiPrefs copyWith({
     ThemeMode? themeMode,
@@ -32,6 +48,12 @@ class UiPrefs {
     String? locale,
     bool? clearLocale,
     bool? ocrEnabled,
+    String? chatGptPrompt,
+    bool? autoHideChrome,
+    int? maxTabHistory,
+    int? cachedTabCount,
+    int? tabPageTimeoutSec,
+    bool? tabSwipeToClose,
   }) =>
       UiPrefs(
         themeMode: themeMode ?? this.themeMode,
@@ -40,6 +62,12 @@ class UiPrefs {
         addressBarPosition: addressBarPosition ?? this.addressBarPosition,
         locale: clearLocale == true ? null : (locale ?? this.locale),
         ocrEnabled: ocrEnabled ?? this.ocrEnabled,
+        chatGptPrompt: chatGptPrompt ?? this.chatGptPrompt,
+        autoHideChrome: autoHideChrome ?? this.autoHideChrome,
+        maxTabHistory: maxTabHistory ?? this.maxTabHistory,
+        cachedTabCount: cachedTabCount ?? this.cachedTabCount,
+        tabPageTimeoutSec: tabPageTimeoutSec ?? this.tabPageTimeoutSec,
+        tabSwipeToClose: tabSwipeToClose ?? this.tabSwipeToClose,
       );
 }
 
@@ -64,6 +92,15 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
     final barPos = _box.get(PrefKeys.addressBarPosition, defaultValue: 'top');
     final locale = _box.get(PrefKeys.locale) as String?;
     final ocr = _box.get(PrefKeys.ocrEnabled, defaultValue: false);
+    final prompt = _box.get(PrefKeys.chatGptPrompt,
+        defaultValue: UiPrefs._defaultChatGptPrompt) as String;
+    final autoHide = _box.get(PrefKeys.autoHideChrome, defaultValue: true);
+    final maxHistory = _box.get(PrefKeys.maxTabHistory, defaultValue: 20);
+    final cachedCount = _box.get(PrefKeys.cachedTabCount, defaultValue: 2);
+    final pageTimeout =
+        _box.get(PrefKeys.tabPageTimeoutSec, defaultValue: 30);
+    final swipeToClose =
+        _box.get(PrefKeys.tabSwipeToClose, defaultValue: true);
     return UiPrefs(
       themeMode: switch (themeName) {
         'light' => ThemeMode.light,
@@ -77,6 +114,12 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
           : AddressBarPosition.top,
       locale: locale,
       ocrEnabled: ocr as bool,
+      chatGptPrompt: prompt,
+      autoHideChrome: autoHide as bool,
+      maxTabHistory: (maxHistory as num).toInt(),
+      cachedTabCount: (cachedCount as num).toInt(),
+      tabPageTimeoutSec: (pageTimeout as num).toInt(),
+      tabSwipeToClose: swipeToClose as bool,
     );
   }
 
@@ -115,5 +158,38 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
   Future<void> setOcrEnabled(bool enabled) async {
     await _box.put(PrefKeys.ocrEnabled, enabled);
     state = state.copyWith(ocrEnabled: enabled);
+  }
+
+  Future<void> setChatGptPrompt(String prompt) async {
+    await _box.put(PrefKeys.chatGptPrompt, prompt);
+    state = state.copyWith(chatGptPrompt: prompt);
+  }
+
+  Future<void> setAutoHideChrome(bool enabled) async {
+    await _box.put(PrefKeys.autoHideChrome, enabled);
+    state = state.copyWith(autoHideChrome: enabled);
+  }
+
+  Future<void> setMaxTabHistory(int value) async {
+    final v = value.clamp(1, 999);
+    await _box.put(PrefKeys.maxTabHistory, v);
+    state = state.copyWith(maxTabHistory: v);
+  }
+
+  Future<void> setCachedTabCount(int value) async {
+    final v = value.clamp(1, 10);
+    await _box.put(PrefKeys.cachedTabCount, v);
+    state = state.copyWith(cachedTabCount: v);
+  }
+
+  Future<void> setTabPageTimeoutSec(int value) async {
+    final v = value.clamp(0, 9999);
+    await _box.put(PrefKeys.tabPageTimeoutSec, v);
+    state = state.copyWith(tabPageTimeoutSec: v);
+  }
+
+  Future<void> setTabSwipeToClose(bool enabled) async {
+    await _box.put(PrefKeys.tabSwipeToClose, enabled);
+    state = state.copyWith(tabSwipeToClose: enabled);
   }
 }

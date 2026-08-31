@@ -10,6 +10,8 @@ import '../presentation/browser/history_view.dart';
 import '../presentation/dictionary/dictionary_view.dart';
 import '../presentation/dictionary/word_detail_view.dart';
 import '../presentation/downloads/download_list_view.dart';
+import '../presentation/settings/permissions_view.dart';
+import '../presentation/settings/settings_view.dart';
 
 /// Application route table (§6 navigation map).
 final routerProvider = Provider<GoRouter>((ref) {
@@ -60,6 +62,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: Routes.permissions,
+            name: Routes.permissions,
+            builder: (context, state) => const PermissionsView(),
+          ),
+          GoRoute(
+            path: Routes.settings,
+            name: Routes.settings,
+            builder: (context, state) => const SettingsView(),
           ),
         ],
       ),

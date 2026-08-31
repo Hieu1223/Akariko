@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../data/models/tab_model.dart';
@@ -39,8 +41,18 @@ class TabGridCard extends StatelessWidget {
                       const BorderRadius.vertical(top: Radius.circular(14)),
                   color: Colors.grey.shade200,
                 ),
+                clipBehavior: Clip.antiAlias,
                 alignment: Alignment.center,
-                child: const Icon(Icons.language, size: 32, color: Colors.grey),
+                child: tab.screenshotPath != null && tab.screenshotPath!.isNotEmpty
+                    ? Image.file(
+                        File(tab.screenshotPath!),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (_, _, _) =>
+                            const Icon(Icons.language, size: 32, color: Colors.grey),
+                      )
+                    : const Icon(Icons.language, size: 32, color: Colors.grey),
               ),
             ),
             Padding(

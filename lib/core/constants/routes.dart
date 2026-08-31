@@ -13,6 +13,7 @@ class Routes {
   static const String flashcards = 'flashcards';
   static const String newsSources = 'news-sources';
   static const String settings = 'settings';
+  static const String permissions = 'permissions';
 
   /// Dictionary browse/search screen (§7.6), nested under [browser].
   static const String dictionary = 'dictionary';

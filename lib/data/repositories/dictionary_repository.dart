@@ -168,9 +168,7 @@ class DriftDictionaryRepository implements DictionaryRepository {
                 id: e.id,
                 headword: e.headword,
                 reading: Value(e.reading),
-                pos: Value(e.pos),
                 meaningsJson: Value(e.meaningsJson),
-                sourcePack: Value(e.sourcePack),
               ),
             )
             .toList(growable: false),

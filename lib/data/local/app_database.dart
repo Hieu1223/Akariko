@@ -44,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'yomu'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -62,6 +62,18 @@ class AppDatabase extends _$AppDatabase {
             if (await dictionaryDao.countEntries() > 0) {
               await dictionaryDao.rebuildFtsIndex();
             }
+          }
+          // v3: the dictionary is trimmed to word/reading/meanings — drop the
+          // now-unused `pos` and `source_pack` columns. SQLite < 3.35 lacks
+          // DROP COLUMN, but the bundled sqlite3 is recent enough.
+          if (from < 3) {
+            await customStatement(
+              'ALTER TABLE ${DbConstants.dictionaryEntries} DROP COLUMN pos',
+            );
+            await customStatement(
+              'ALTER TABLE ${DbConstants.dictionaryEntries} '
+              'DROP COLUMN source_pack',
+            );
           }
         },
       );
