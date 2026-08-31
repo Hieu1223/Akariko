@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 
-/// Bottom toolbar: Back / Forward / New Tab / Tabs / Menu.
+/// Bottom toolbar: Back / Forward / Reload / New Tab / Tabs / Menu.
 class BottomToolbar extends StatelessWidget {
   const BottomToolbar({
     super.key,
     required this.onBack,
-    required this.onForward,
+    required this.onReload,
     required this.onNewTab,
     required this.onTabs,
     required this.onMenu,
     required this.tabCount,
     this.canGoBack = false,
-    this.canGoForward = false,
+    this.height = 44,
   });
 
   final VoidCallback onBack;
-  final VoidCallback onForward;
+  final VoidCallback onReload;
   final VoidCallback onNewTab;
   final VoidCallback onTabs;
   final VoidCallback onMenu;
   final int tabCount;
   final bool canGoBack;
-  final bool canGoForward;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class BottomToolbar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 52,
+          height: height,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -46,8 +46,8 @@ class BottomToolbar extends StatelessWidget {
                 onPressed: canGoBack ? onBack : null,
               ),
               _ToolButton(
-                icon: Icons.arrow_forward,
-                onPressed: canGoForward ? onForward : null,
+                icon: Icons.refresh,
+                onPressed: onReload,
               ),
               _ToolButton(
                 icon: Icons.add,
@@ -73,6 +73,7 @@ class _ToolButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
+        iconSize: 22,
         icon: Icon(icon, color: onPressed == null ? Colors.grey : null),
         onPressed: onPressed,
       );
@@ -85,6 +86,7 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
+        iconSize: 22,
         icon: Badge.count(
           count: count,
           child: const Icon(Icons.square_outlined),

@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/routes.dart';
-import '../../data/models/token.dart';
 import '../../data/models/word_entry.dart';
 import '../browser/browser_viewmodel.dart';
 import '../dictionary/popup_dictionary_viewmodel.dart';
 
-/// Overlay that shows the popup dictionary card anchored to the current text
-/// selection (§7.5). Rendered on top of the WebView area; tapping outside the
-/// card dismisses it. Returns nothing when there is no active selection.
+/// Overlay anchored to the current text selection (§7.5).
+///
+/// On a selection it shows a context menu (Copy / Paste / Select All / Web
+/// Search / Lookup / Ask AI). Choosing "Lookup" swaps the menu for a popup
+/// listing dictionary entries whose headword/reading starts with the selection,
+/// shortest first. Tapping outside dismisses whatever is showing.
 class PopupDictionaryOverlay extends ConsumerStatefulWidget {
   const PopupDictionaryOverlay({super.key});
 
@@ -34,7 +36,6 @@ class _PopupDictionaryOverlayState extends ConsumerState<PopupDictionaryOverlay>
     return LayoutBuilder(
       builder: (ctx, constraints) {
         _area = Size(constraints.maxWidth, constraints.maxHeight);
-        // Measure the card after layout, then clamp it on-screen.
         WidgetsBinding.instance.addPostFrameCallback((_) => _reposition(rect));
         return Stack(
           children: [
@@ -63,7 +64,7 @@ class _PopupDictionaryOverlayState extends ConsumerState<PopupDictionaryOverlay>
                     elevation: 8,
                     borderRadius: BorderRadius.circular(14),
                     color: Theme.of(context).colorScheme.surface,
-                    child: const _PopupCard(),
+                    child: state.showMenu ? const _ContextMenu() : const _LookupList(),
                   ),
                 ),
               ),
@@ -98,165 +99,230 @@ class _PopupDictionaryOverlayState extends ConsumerState<PopupDictionaryOverlay>
   }
 }
 
-/// The card body: entry, morpheme breakdown, and actions.
-class _PopupCard extends ConsumerWidget {
-  const _PopupCard();
+/// The context menu shown on a text selection.
+class _ContextMenu extends ConsumerWidget {
+  const _ContextMenu();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(popupDictionaryViewModelProvider);
-    final textTheme = Theme.of(context).textTheme;
+    final text = state.selection?.text ?? '';
+    final scheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (state.loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(12),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else ...[
-            if (state.word != null) _WordHeader(entry: state.word!)
-            else if (!state.hasEntry)
-              Text(
-                'No dictionary entry found.',
-                style: textTheme.bodyMedium
-                    ?.copyWith(color: Theme.of(context).hintColor),
-              ),
-            if (state.tokens.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _TokenChips(tokens: state.tokens),
-            ],
-            const SizedBox(height: 12),
-            _Actions(),
-          ],
+          _MenuItem(
+            icon: Icons.copy_outlined,
+            label: 'Copy',
+            enabled: text.isNotEmpty,
+            onTap: () {
+              ref.read(browserViewModelProvider.notifier).copySelection(text);
+              ref.read(popupDictionaryViewModelProvider.notifier).hide();
+            },
+          ),
+          _MenuItem(
+            icon: Icons.content_paste_outlined,
+            label: 'Paste',
+            onTap: () {
+              ref.read(browserViewModelProvider.notifier).pasteSelection();
+              ref.read(popupDictionaryViewModelProvider.notifier).hide();
+            },
+          ),
+          _MenuItem(
+            icon: Icons.select_all_outlined,
+            label: 'Select All',
+            onTap: () {
+              ref.read(browserViewModelProvider.notifier).selectAll();
+            },
+          ),
+          const Divider(height: 1),
+          _MenuItem(
+            icon: Icons.search_outlined,
+            label: 'Web Search',
+            enabled: text.isNotEmpty,
+            onTap: () {
+              ref.read(browserViewModelProvider.notifier).webSearch(text);
+              ref.read(popupDictionaryViewModelProvider.notifier).hide();
+            },
+          ),
+          _MenuItem(
+            icon: Icons.translate_outlined,
+            label: 'Lookup',
+            enabled: text.isNotEmpty,
+            onTap: () {
+              ref.read(popupDictionaryViewModelProvider.notifier).lookup();
+            },
+          ),
+          _MenuItem(
+            icon: Icons.auto_awesome_outlined,
+            label: 'Ask AI',
+            enabled: text.isNotEmpty,
+            onTap: () {
+              ref.read(browserViewModelProvider.notifier).askAi(text);
+              ref.read(popupDictionaryViewModelProvider.notifier).hide();
+            },
+          ),
+          Container(
+            height: 4,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: scheme.outline.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _WordHeader extends StatelessWidget {
-  const _WordHeader({required this.entry});
+class _MenuItem extends StatelessWidget {
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: enabled ? scheme.onSurface : scheme.outline),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: enabled ? null : scheme.outline,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The dictionary list popup opened by "Lookup".
+class _LookupList extends ConsumerWidget {
+  const _LookupList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(popupDictionaryViewModelProvider);
+    final textTheme = Theme.of(context).textTheme;
+    final query = state.selection?.text.trim() ?? '';
+
+    return SizedBox(
+      width: 300,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '“$query”',
+              style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            if (state.loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (state.lookupResults.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No dictionary entries found.',
+                  style: textTheme.bodyMedium
+                      ?.copyWith(color: Theme.of(context).hintColor),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: state.lookupResults.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) => _EntryRow(entry: state.lookupResults[i]),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EntryRow extends ConsumerWidget {
+  const _EntryRow({required this.entry});
 
   final WordEntry entry;
 
   @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          entry.headword,
-          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        if (entry.hasReading) ...[
-          const SizedBox(height: 2),
-          Text(
-            entry.reading,
-            style: textTheme.titleSmall?.copyWith(color: scheme.outline),
-          ),
-        ],
-        const SizedBox(height: 8),
-        const SizedBox(height: 8),
-        Text(
-          entry.shortGloss.isEmpty ? '—' : entry.shortGloss,
-          style: textTheme.bodyMedium,
-        ),
-      ],
-    );
-  }
-}
-
-class _TokenChips extends ConsumerWidget {
-  const _TokenChips({required this.tokens});
-
-  final List<Token> tokens;
-
-  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final token in tokens)
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => ref
-                .read(popupDictionaryViewModelProvider.notifier)
-                .focusToken(token.surface),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                border: Border.all(color: scheme.outlineVariant),
-                borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: () {
+        context.pushNamed(Routes.wordDetail, pathParameters: {'id': entry.id});
+        ref.read(popupDictionaryViewModelProvider.notifier).hide();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              entry.headword,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            if (entry.hasReading) ...[
+              const SizedBox(height: 2),
+              Text(
+                entry.reading,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: scheme.outline),
               ),
-              child: Text(
-                token.surface,
-                style: Theme.of(context).textTheme.bodyMedium,
+            ],
+            if (entry.shortGloss.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                entry.shortGloss,
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _Actions extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(popupDictionaryViewModelProvider);
-    final scheme = Theme.of(context).colorScheme;
-    final selectedText = state.selection?.text ?? '';
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.auto_awesome_outlined),
-          tooltip: 'Ask AI',
-          onPressed: selectedText.isNotEmpty
-              ? () {
-                  ref
-                      .read(browserViewModelProvider.notifier)
-                      .askAi(selectedText);
-                  ref.read(popupDictionaryViewModelProvider.notifier).hide();
-                }
-              : null,
+            ],
+          ],
         ),
-        IconButton(
-          icon: const Icon(Icons.add),
-          tooltip: 'Add to deck',
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Decks arrive with the flashcards phase.'),
-            ),
-          ),
-        ),
-        if (state.word != null)
-          TextButton(
-            onPressed: () {
-              context.pushNamed(
-                Routes.wordDetail,
-                pathParameters: {'id': state.word!.id},
-              );
-              ref.read(popupDictionaryViewModelProvider.notifier).hide();
-            },
-            child: Text(
-              'Full entry',
-              style: TextStyle(color: scheme.primary),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

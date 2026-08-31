@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -247,12 +248,6 @@ class BrowserViewModel extends Notifier<BrowserState> {
     if (await c.canGoBack()) await c.goBack();
   }
 
-  Future<void> goForward() async {
-    final c = controller;
-    if (c == null) return;
-    if (await c.canGoForward()) await c.goForward();
-  }
-
   Future<void> reload() async {
     revealChrome();
     await controller?.reload();
@@ -261,16 +256,14 @@ class BrowserViewModel extends Notifier<BrowserState> {
   Future<void> _refreshNavStateActive() async {
     final c = controller;
     if (c == null) {
-      _nav.setNav(back: false, forward: false);
+      _nav.setNav(back: false);
       return;
     }
     final back = await c.canGoBack();
-    final fwd = await c.canGoForward();
-    if (ref.read(browserNavProvider).canGoBack == back &&
-        ref.read(browserNavProvider).canGoForward == fwd) {
+    if (ref.read(browserNavProvider).canGoBack == back) {
       return;
     }
-    _nav.setNav(back: back, forward: fwd);
+    _nav.setNav(back: back);
   }
 
   // ── WebView event callbacks (per tab) ──────────────────────────────────────
@@ -423,6 +416,32 @@ class BrowserViewModel extends Notifier<BrowserState> {
     manager.cancelRelease(tab.id);
     _resetAddressBar();
     _refreshNavStateActive();
+  }
+
+  // ── Selection context-menu actions ────────────────────────────────────────
+  /// Copies the current selection into the system clipboard.
+  Future<void> copySelection(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+  }
+
+  /// Best-effort paste into the page's focused element.
+  Future<void> pasteSelection() async {
+    await controller?.evaluateJavascript(
+      source: "document.execCommand('paste')",
+    );
+  }
+
+  /// Selects all text on the page (re-shows the context menu via the
+  /// selection listener once the new selection is reported).
+  Future<void> selectAll() async {
+    await controller?.evaluateJavascript(
+      source: "document.execCommand('selectAll')",
+    );
+  }
+
+  /// Opens a web-search for [text] in the active tab.
+  Future<void> webSearch(String text) async {
+    await navigateTo(text);
   }
 }
 

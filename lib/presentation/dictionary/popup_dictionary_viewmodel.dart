@@ -1,52 +1,59 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/webview_bridge.dart';
-import '../../data/models/token.dart';
 import '../../data/models/word_entry.dart';
+import '../../data/repositories/dictionary_repository.dart';
 import '../../modules/dictionary_module.dart';
-import '../../modules/tokenizer_module.dart';
 import '../../modules/usecases/lookup_word_usecase.dart';
 
-/// State driving the popup dictionary overlay (§7.5).
+/// State driving the text-selection overlay (§7.5).
+///
+/// A long-press / selection no longer opens the dictionary straight away.
+/// Instead it shows a context menu (Copy / Paste / Select All / Web Search /
+/// Lookup / Ask AI). Only "Lookup" runs a dictionary search and opens a popup
+/// listing every entry whose headword/reading starts with the selection,
+/// ordered shortest first.
 class PopupDictionaryState {
   const PopupDictionaryState({
     this.selection,
+    this.menuVisible = false,
     this.loading = false,
-    this.word,
-    this.tokens = const [],
+    this.lookupResults = const [],
     this.error,
   });
 
   final WebSelection? selection;
+  final bool menuVisible;
   final bool loading;
-  final WordEntry? word;
-  final List<Token> tokens;
+  final List<WordEntry> lookupResults;
   final String? error;
 
   bool get visible => selection != null;
-  bool get hasEntry => word != null || tokens.isNotEmpty;
+
+  /// The context menu is shown right after a selection.
+  bool get showMenu => menuVisible && selection != null;
+
+  /// The dictionary list popup is shown after "Lookup" is chosen.
+  bool get showLookup => lookupResults.isNotEmpty;
 
   PopupDictionaryState copyWith({
     WebSelection? selection,
+    bool? menuVisible,
     bool? loading,
-    WordEntry? word,
-    List<Token>? tokens,
+    List<WordEntry>? lookupResults,
     String? error,
-    bool clearWord = false,
-    bool clearTokens = false,
+    bool clearLookup = false,
   }) =>
       PopupDictionaryState(
         selection: selection ?? this.selection,
+        menuVisible: menuVisible ?? this.menuVisible,
         loading: loading ?? this.loading,
-        word: clearWord ? null : (word ?? this.word),
-        tokens: clearTokens ? const [] : (tokens ?? this.tokens),
+        lookupResults: clearLookup ? const [] : (lookupResults ?? this.lookupResults),
         error: error ?? this.error,
       );
 }
 
-/// Drives the popup dictionary: on a text selection it looks up the word (or
-/// the token's base form) and tokenizes the selection so a sentence can be
-/// explored morpheme by morpheme. Tapping a token re-runs the lookup for it.
+/// Drives the selection overlay (§7.5).
 ///
 /// Kept alive for the session (non-autoDispose) so the active selection is not
 /// lost across rebuilds; the overlay only renders when [state.visible].
@@ -67,66 +74,54 @@ class PopupDictionaryViewModel extends Notifier<PopupDictionaryState> {
     return const PopupDictionaryState();
   }
 
-  /// Entry point called from the WebView selection stream.
+  /// Entry point called from the WebView selection stream: show the context
+  /// menu instead of looking anything up.
   void onSelection(WebSelection sel) {
     if (sel.isEmpty) {
       hide();
       return;
     }
-    _resolve(sel);
-  }
-
-  Future<void> _resolve(WebSelection sel) async {
-    final requestId = ++_requestId;
     state = state.copyWith(
       selection: sel,
+      menuVisible: true,
+      loading: false,
+      clearLookup: true,
+      error: null,
+    );
+  }
+
+  /// "Lookup": prefix-search the dictionary for the selection and open the
+  /// list popup, ordered from the shortest headword to the longest.
+  Future<void> lookup() async {
+    final sel = state.selection;
+    if (sel == null) return;
+    final requestId = ++_requestId;
+
+    state = state.copyWith(
+      menuVisible: false,
       loading: true,
-      clearWord: true,
-      clearTokens: true,
+      clearLookup: true,
       error: null,
     );
 
-    final text = sel.text;
-    final tokens = await _tokenize(text);
+    final query = sel.text.trim();
+    if (query.isEmpty) {
+      state = state.copyWith(loading: false);
+      return;
+    }
+
+    final page = await _lookup.search(
+      query,
+      mode: DictionarySearchMode.prefix,
+    );
     if (requestId != _requestId) return;
 
-    WordEntry? word = await _exactMatch(text);
-    if (word == null && tokens.length == 1) {
-      final base = tokens.first;
-      if (base.hasBaseForm) word = await _exactMatch(base.baseForm);
-    }
+    // Shortest headword first (fewest characters → longest).
+    final sorted = [...page.entries]
+      ..sort((a, b) => a.headword.length.compareTo(b.headword.length));
+
     if (requestId != _requestId) return;
-
-    state = state.copyWith(loading: false, tokens: tokens, word: word);
-  }
-
-  /// Re-runs the lookup for a single tapped token (sentence breakdown → word).
-  Future<void> focusToken(String surface) async {
-    final requestId = _requestId;
-    WordEntry? word = await _exactMatch(surface);
-    if (word == null) {
-      final tok = state.tokens.where((t) => t.surface == surface).firstOrNull;
-      if (tok != null && tok.hasBaseForm) {
-        word = await _exactMatch(tok.baseForm);
-      }
-    }
-    if (requestId != _requestId) return;
-    state = state.copyWith(word: word);
-  }
-
-  Future<WordEntry?> _exactMatch(String query) async {
-    final page = await _lookup.search(query.trim());
-    return page.entries.isNotEmpty ? page.entries.first : null;
-  }
-
-  Future<List<Token>> _tokenize(String text) async {
-    if (text.trim().isEmpty) return const [];
-    try {
-      return await ref.read(tokenizeTextUsecaseProvider)(text);
-    } on Object {
-      // Tokenizer is best-effort enrichment; never block the dictionary card.
-      return const [];
-    }
+    state = state.copyWith(loading: false, lookupResults: sorted);
   }
 
   void hide() {

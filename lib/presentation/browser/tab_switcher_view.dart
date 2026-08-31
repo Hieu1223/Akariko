@@ -23,13 +23,6 @@ class TabSwitcherView extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Tabs'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              await ref.read(tabSwitcherViewModelProvider.notifier).openNewTab();
-              if (context.mounted) context.pop();
-            },
-          ),
           PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'close_all') {

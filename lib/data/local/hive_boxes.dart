@@ -29,6 +29,10 @@ class PrefKeys {
       'tab_page_timeout_sec'; // int — release page data after idle
   static const String tabSwipeToClose =
       'tab_swipe_to_close'; // bool — swipe to delete in tab switcher
+  static const String topBarHeight =
+      'top_bar_height'; // double — height of the address/top bar
+  static const String bottomBarHeight =
+      'bottom_bar_height'; // double — height of the bottom toolbar
 }
 
 /// Strongly-typed keys inside the [HiveBoxes.settings] box.

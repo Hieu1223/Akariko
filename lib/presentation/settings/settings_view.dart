@@ -69,6 +69,18 @@ class SettingsView extends ConsumerWidget {
               ],
             ),
           ),
+          _NumberField(
+            label: 'Top bar height',
+            hint: 'Height of the address bar (28–120).',
+            value: prefs.topBarHeight.round(),
+            onChanged: (v) => prefsNotifier.setTopBarHeight(v.toDouble()),
+          ),
+          _NumberField(
+            label: 'Bottom bar height',
+            hint: 'Height of the bottom toolbar (36–120).',
+            value: prefs.bottomBarHeight.round(),
+            onChanged: (v) => prefsNotifier.setBottomBarHeight(v.toDouble()),
+          ),
           const _SectionTitle('Tabs'),
           _NumberField(
             label: 'Max history per tab',

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Volatile, per-frame-ish UI indicators for the active tab (loading spinner,
-/// load progress, back/forward availability, bookmark state).
+/// load progress, back availability, bookmark state).
 ///
 /// Kept separate from [BrowserState] on purpose: these change dozens of times
 /// per page load (progress 0→100, load start/stop), whereas the WebView tree
@@ -13,28 +13,24 @@ class BrowserNavState {
     this.isLoading = false,
     this.progress = 0,
     this.canGoBack = false,
-    this.canGoForward = false,
     this.isBookmarked = false,
   });
 
   final bool isLoading;
   final int progress;
   final bool canGoBack;
-  final bool canGoForward;
   final bool isBookmarked;
 
   BrowserNavState copyWith({
     bool? isLoading,
     int? progress,
     bool? canGoBack,
-    bool? canGoForward,
     bool? isBookmarked,
   }) =>
       BrowserNavState(
         isLoading: isLoading ?? this.isLoading,
         progress: progress ?? this.progress,
         canGoBack: canGoBack ?? this.canGoBack,
-        canGoForward: canGoForward ?? this.canGoForward,
         isBookmarked: isBookmarked ?? this.isBookmarked,
       );
 }
@@ -51,8 +47,8 @@ class BrowserNavViewModel extends Notifier<BrowserNavState> {
 
   void setProgress(int p) => state = state.copyWith(progress: p);
 
-  void setNav({required bool back, required bool forward}) =>
-      state = state.copyWith(canGoBack: back, canGoForward: forward);
+  void setNav({required bool back}) =>
+      state = state.copyWith(canGoBack: back);
 
   void setBookmarked(bool v) => state = state.copyWith(isBookmarked: v);
 

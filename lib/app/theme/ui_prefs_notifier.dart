@@ -21,6 +21,8 @@ class UiPrefs {
     this.cachedTabCount = 2,
     this.tabPageTimeoutSec = 30,
     this.tabSwipeToClose = true,
+    this.topBarHeight = 48,
+    this.bottomBarHeight = 44,
   });
 
   final ThemeMode themeMode;
@@ -35,6 +37,8 @@ class UiPrefs {
   final int cachedTabCount;
   final int tabPageTimeoutSec;
   final bool tabSwipeToClose;
+  final double topBarHeight;
+  final double bottomBarHeight;
 
   static const String _defaultChatGptPrompt =
       'Explain the following Japanese text in simple, beginner-friendly terms. '
@@ -54,6 +58,8 @@ class UiPrefs {
     int? cachedTabCount,
     int? tabPageTimeoutSec,
     bool? tabSwipeToClose,
+    double? topBarHeight,
+    double? bottomBarHeight,
   }) =>
       UiPrefs(
         themeMode: themeMode ?? this.themeMode,
@@ -68,6 +74,8 @@ class UiPrefs {
         cachedTabCount: cachedTabCount ?? this.cachedTabCount,
         tabPageTimeoutSec: tabPageTimeoutSec ?? this.tabPageTimeoutSec,
         tabSwipeToClose: tabSwipeToClose ?? this.tabSwipeToClose,
+        topBarHeight: topBarHeight ?? this.topBarHeight,
+        bottomBarHeight: bottomBarHeight ?? this.bottomBarHeight,
       );
 }
 
@@ -101,6 +109,10 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
         _box.get(PrefKeys.tabPageTimeoutSec, defaultValue: 30);
     final swipeToClose =
         _box.get(PrefKeys.tabSwipeToClose, defaultValue: true);
+    final topBarHeight =
+        _box.get(PrefKeys.topBarHeight, defaultValue: 48.0);
+    final bottomBarHeight =
+        _box.get(PrefKeys.bottomBarHeight, defaultValue: 44.0);
     return UiPrefs(
       themeMode: switch (themeName) {
         'light' => ThemeMode.light,
@@ -120,6 +132,8 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
       cachedTabCount: (cachedCount as num).toInt(),
       tabPageTimeoutSec: (pageTimeout as num).toInt(),
       tabSwipeToClose: swipeToClose as bool,
+      topBarHeight: (topBarHeight as num).toDouble(),
+      bottomBarHeight: (bottomBarHeight as num).toDouble(),
     );
   }
 
@@ -191,5 +205,17 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
   Future<void> setTabSwipeToClose(bool enabled) async {
     await _box.put(PrefKeys.tabSwipeToClose, enabled);
     state = state.copyWith(tabSwipeToClose: enabled);
+  }
+
+  Future<void> setTopBarHeight(double value) async {
+    final v = value.clamp(28.0, 120.0);
+    await _box.put(PrefKeys.topBarHeight, v);
+    state = state.copyWith(topBarHeight: v);
+  }
+
+  Future<void> setBottomBarHeight(double value) async {
+    final v = value.clamp(36.0, 120.0);
+    await _box.put(PrefKeys.bottomBarHeight, v);
+    state = state.copyWith(bottomBarHeight: v);
   }
 }

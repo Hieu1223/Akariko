@@ -53,12 +53,14 @@ class BrowserView extends ConsumerWidget {
       },
     );
 
-    // Scroll-linked collapse. The bar slides/fades with the page scroll via
-    // [BrowserViewModel.chromeOffset] (a ValueNotifier, so only the bar
-    // rebuilds — not the whole WebView tree).
-    final chrome = _ChromeBar(
-      notifier: vmNotifier,
-      addressBar: addressBar,
+    // Static address bar — no scroll-based collapse. Full-width, like a normal
+    // browser URL bar, with a configurable height.
+    final chrome = SizedBox(
+      height: prefs.topBarHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Center(child: addressBar),
+      ),
     );
 
     // One WebView per cached tab, kept mounted (but hidden) so switching is
@@ -86,19 +88,14 @@ class BrowserView extends ConsumerWidget {
     }).toList();
 
     final content = SizedBox.expand(
-      child: GestureDetector(
-        // Tapping the page area releases the keyboard / address-bar focus.
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        behavior: HitTestBehavior.translucent,
-        child: Stack(
-          children: [
-            ...webViews,
-            if (showHome)
-              const Positioned.fill(child: NewTabView())
-            else
-              const Positioned.fill(child: PopupDictionaryOverlay()),
-          ],
-        ),
+      child: Stack(
+        children: [
+          ...webViews,
+          if (showHome)
+            const Positioned.fill(child: NewTabView())
+          else
+            const Positioned.fill(child: PopupDictionaryOverlay()),
+        ],
       ),
     );
 
@@ -107,12 +104,9 @@ class BrowserView extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            if (!showHome && prefs.addressBarPosition == AddressBarPosition.top)
-              chrome,
+            if (prefs.addressBarPosition == AddressBarPosition.top) chrome,
             Expanded(child: content),
-            if (!showHome &&
-                prefs.addressBarPosition == AddressBarPosition.bottom)
-              chrome,
+            if (prefs.addressBarPosition == AddressBarPosition.bottom) chrome,
               // Back/forward availability is volatile nav state; keep it in a
               // Consumer so only the toolbar rebuilds on a history change.
               Consumer(
@@ -121,12 +115,12 @@ class BrowserView extends ConsumerWidget {
                   return BottomToolbar(
                     tabCount: vm.tabs.length,
                     canGoBack: nav.canGoBack,
-                    canGoForward: nav.canGoForward,
+                    height: prefs.bottomBarHeight,
                     onBack: vmNotifier.hasActiveController
                         ? () => vmNotifier.goBack()
                         : () {},
-                    onForward: vmNotifier.hasActiveController
-                        ? () => vmNotifier.goForward()
+                    onReload: vmNotifier.hasActiveController
+                        ? () => vmNotifier.reload()
                         : () {},
                     onNewTab: () => vmNotifier.openNewTab(),
                     onTabs: () {
@@ -232,8 +226,6 @@ class _TabWebView extends StatefulWidget {
 }
 
 class _TabWebViewState extends State<_TabWebView> {
-  InAppWebViewController? _c;
-
   @override
   void dispose() {
     widget.vm.unregisterController(widget.tabId);
@@ -242,19 +234,6 @@ class _TabWebViewState extends State<_TabWebView> {
 
   @override
   Widget build(BuildContext context) {
-    final askAiItem = ContextMenuItem(id: 1, title: 'Ask AI');
-    final contextMenu = ContextMenu(
-      menuItems: [askAiItem],
-      onContextMenuActionItemClicked: (item) async {
-        if (item.id != 1 || _c == null) return;
-        final text = await _c!.evaluateJavascript(
-          source: "window.getSelection().toString()",
-        );
-        final selected = (text?.toString() ?? '').trim();
-        if (selected.isNotEmpty) widget.vm.askAi(selected);
-      },
-    );
-
     return InAppWebView(
       key: widget.key,
       initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
@@ -262,12 +241,12 @@ class _TabWebViewState extends State<_TabWebView> {
         javaScriptEnabled: true,
         mediaPlaybackRequiresUserGesture: false,
         useOnDownloadStart: true,
+        // Disable the WebView's built-in (native) context/long-press menu so
+        // only our custom Flutter selection menu is shown.
+        disableContextMenu: true,
+        disableLongPressContextMenuOnLinks: true,
       ),
-      contextMenu: contextMenu,
-      onWebViewCreated: (c) {
-        _c = c;
-        widget.vm.onWebViewCreated(widget.tabId, c);
-      },
+      onWebViewCreated: (c) => widget.vm.onWebViewCreated(widget.tabId, c),
       onLoadStart: (c, url) => widget.vm.onLoadStart(widget.tabId, url),
       onLoadStop: (c, url) => widget.vm.onLoadStop(widget.tabId, url),
       onProgressChanged: (c, p) => widget.vm.onProgressChanged(widget.tabId, p),
@@ -278,50 +257,6 @@ class _TabWebViewState extends State<_TabWebView> {
           widget.vm.onUpdateVisitedHistory(widget.tabId, url, reload),
       onDownloadStartRequest: (c, request) =>
           widget.onDownload(request.url.toString()),
-    );
-  }
-}
-
-/// Scroll-linked address bar. Listens to [BrowserViewModel.chromeOffset]
-/// (0 = fully shown, 1 = fully collapsed) and slides/fades the bar so it tracks
-/// the page scroll instead of snapping. Only this widget rebuilds on scroll.
-/// The parent [Column] decides whether it sits at the top or bottom.
-class _ChromeBar extends StatelessWidget {
-  const _ChromeBar({
-    required this.notifier,
-    required this.addressBar,
-  });
-
-  final BrowserViewModel notifier;
-  final Widget addressBar;
-
-  /// Fixed bar height used for the collapse animation; the address bar fits
-  /// comfortably within it, so clipping only trims during collapse.
-  static const double _kBarHeight = 48;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: notifier.chromeOffset,
-      builder: (ctx, t, _) {
-        final visible = (1 - t).clamp(0.0, 1.0);
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Opacity(
-              opacity: visible,
-              child: SizedBox(
-                height: _kBarHeight * visible,
-                child: Container(
-                  alignment: Alignment.topCenter,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  child: addressBar,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
