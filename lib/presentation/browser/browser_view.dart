@@ -250,6 +250,14 @@ class BrowserView extends ConsumerWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.rss_feed),
+              title: const Text('News Sources'),
+              onTap: () {
+                Navigator.pop(ctx);
+                context.pushNamed(Routes.newsSources);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Settings'),
               onTap: () {

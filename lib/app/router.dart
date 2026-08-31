@@ -10,6 +10,7 @@ import '../presentation/browser/history_view.dart';
 import '../presentation/dictionary/dictionary_view.dart';
 import '../presentation/dictionary/word_detail_view.dart';
 import '../presentation/downloads/download_list_view.dart';
+import '../presentation/news/news_source_manage_view.dart';
 import '../presentation/settings/permissions_view.dart';
 import '../presentation/settings/settings_view.dart';
 
@@ -48,6 +49,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: Routes.downloads,
             name: Routes.downloads,
             builder: (context, state) => const DownloadListView(),
+          ),
+          GoRoute(
+            path: Routes.newsSources,
+            name: Routes.newsSources,
+            builder: (context, state) => const NewsSourceManageView(),
           ),
           GoRoute(
             path: Routes.dictionary,

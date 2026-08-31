@@ -45,13 +45,13 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'yomu'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          await _seedNewsSources(m);
+          await _seedNewsSources();
         },
         onUpgrade: (m, from, to) async {
           // v2 (phase 3) added an FTS5 index over the (now removed) dictionary
@@ -77,12 +77,19 @@ class AppDatabase extends _$AppDatabase {
               'ON ${DbConstants.history} (visited_at)',
             );
           }
+          // v5: seed the default news sources for users who installed before the
+          // news feed phase landed. insertOrIgnore keeps it idempotent, so an
+          // upgraded user who already deleted a default source isn't resurrected.
+          if (from < 5) {
+            await _seedNewsSources();
+          }
         },
       );
 
-  Future<void> _seedNewsSources(Migrator m) async {
-    // Default seed list (§7.17). Inserted once on first launch; every row is
-    // user-editable/removable afterward like any other source.
+  Future<void> _seedNewsSources() async {
+    // Default seed list (§7.17). Inserted once on first launch (and on the v5
+    // upgrade); every row is user-editable/removable afterward like any other
+    // source. `insertOrIgnore` means re-seeding never clobbers a kept/edited row.
     const seeds = [
       ('japan-times', 'Japan Times — latest articles',
           'https://www.japantimes.co.jp/feed/topstories/'),
@@ -105,6 +112,7 @@ class AppDatabase extends _$AppDatabase {
           name: name,
           feedUrl: feedUrl,
         ),
+        mode: InsertMode.insertOrIgnore,
       );
     }
     log('Seeded ${seeds.length} default news sources');

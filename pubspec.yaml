@@ -28,6 +28,13 @@ dependencies:
   # HTTP (search-suggestion autocomplete); one keep-alive client is reused.
   http: ^1.6.0
 
+  # RSS/Atom feed parsing (news feed phase, §7.17).
+  webfeed_revised: ^0.9.0
+
+  # Date/time formatting for the news feed timestamps (also used by the later
+  # localization phase, §12).
+  intl: ^0.20.0
+
   # Relational storage
   drift: ^2.24.0
   drift_flutter: ^0.2.2
