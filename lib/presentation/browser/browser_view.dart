@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import '../../modules/download_module.dart';
 import '../common_widgets/bottom_toolbar.dart';
 import '../common_widgets/popup_dictionary_card.dart';
 import '../common_widgets/safari_address_bar.dart';
+import 'address_suggestions_overlay.dart';
 import 'browser_viewmodel.dart';
 import 'browser_nav_state.dart';
 import 'new_tab_view.dart';
@@ -46,8 +48,11 @@ class BrowserView extends ConsumerWidget {
         final nav = ref.watch(browserNavProvider);
         return SafariAddressBar(
           controller: vmNotifier.addressController,
+          focusNode: vmNotifier.addressFocusNode,
           isLoading: nav.isLoading,
           progress: nav.progress.toDouble(),
+          onChanged: vmNotifier.onAddressChanged,
+          onClear: vmNotifier.clearAddress,
           onSubmitted: (q) => vmNotifier.navigateTo(q),
           trailing: IconButton(
             icon: Icon(
@@ -95,6 +100,10 @@ class BrowserView extends ConsumerWidget {
                 const Positioned.fill(child: NewTabView())
               else
                 const Positioned.fill(child: PopupDictionaryOverlay()),
+              // Address-bar suggestions live in the shell (not a pushed route),
+              // so the WebView underneath is never detached and the shell's
+              // back handler can dismiss them.
+              const Positioned.fill(child: AddressSuggestionsOverlay()),
               if (showPerfOverlay) const PerfOverlay(),
             ],
           );
@@ -127,9 +136,15 @@ class BrowserView extends ConsumerWidget {
                       : () {},
                   onNewTab: () => vmNotifier.openNewTab(),
                   onTabs: () {
+                    // Leaving the shell ends address editing, so we never come
+                    // back to a stale suggestion list / keyboard.
+                    vmNotifier.cancelAddressEditing();
                     context.pushNamed(Routes.tabSwitcher);
                   },
-                  onMenu: () => _openMenu(context, ref),
+                  onMenu: () {
+                    vmNotifier.cancelAddressEditing();
+                    _openMenu(context, ref);
+                  },
                 );
               },
             ),
@@ -138,16 +153,31 @@ class BrowserView extends ConsumerWidget {
       ),
     );
 
-    // Intercept the OS back gesture / button on phones so it navigates the
-    // WebView back in history before exiting the app.
+    // Intercept the OS back gesture / button on phones. Priority:
+    //   1. the address-bar suggestion overlay → close it, stay on the page;
+    //   2. the page's own history → step back inside the WebView;
+    //   3. nothing left → leave the app.
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (vmNotifier.hasActiveController &&
-            await vmNotifier.controller!.canGoBack()) {
-          await vmNotifier.goBack();
+        if (vmNotifier.isEditingAddress) {
+          vmNotifier.cancelAddressEditing();
+          return;
         }
+        // `canGoBack` is already tracked in nav state, so the common case needs
+        // no round-trip to the platform WebView; only fall back to the async
+        // check before we would otherwise close the app.
+        if (ref.read(browserNavProvider).canGoBack) {
+          await vmNotifier.goBack();
+          return;
+        }
+        final controller = vmNotifier.controller;
+        if (controller != null && await controller.canGoBack()) {
+          await vmNotifier.goBack();
+          return;
+        }
+        await SystemNavigator.pop();
       },
       child: scaffold,
     );

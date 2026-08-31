@@ -21,6 +21,8 @@ class PrefKeys {
       'chatgpt_prompt'; // String template, {text} placeholder
   static const String autoHideChrome =
       'auto_hide_chrome'; // bool — collapse bars on scroll
+  static const String searchSuggestionsEnabled =
+      'search_suggestions_enabled'; // bool — query Google's suggest endpoint
   static const String maxTabHistory =
       'max_tab_history'; // int — per-tab history stack size
   static const String cachedTabCount =

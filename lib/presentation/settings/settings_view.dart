@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/ui_prefs_notifier.dart';
 import '../../core/constants/routes.dart';
+import '../../modules/search_suggestions_module.dart';
 
 /// Top-level settings screen. Preferences are grouped into cards (Appearance,
 /// Browser, Tabs, Performance, ChatGPT, Pages).
@@ -91,6 +92,21 @@ class SettingsView extends ConsumerWidget {
                 subtitle: const Text('Collapses the bar when scrolling the page.'),
                 value: prefs.autoHideChrome,
                 onChanged: prefsNotifier.setAutoHideChrome,
+              ),
+              SwitchListTile(
+                title: const Text('Search suggestions'),
+                subtitle: const Text(
+                  'Ask Google to complete what you type in the address bar. '
+                  'Off: suggestions come only from history and bookmarks.',
+                ),
+                value: prefs.searchSuggestionsEnabled,
+                onChanged: (enabled) {
+                  prefsNotifier.setSearchSuggestionsEnabled(enabled);
+                  // Turning it off should also forget what was already fetched.
+                  if (!enabled) {
+                    ref.read(searchSuggestionRepositoryProvider).clearCache();
+                  }
+                },
               ),
               ListTile(
                 title: const Text('Address bar position'),

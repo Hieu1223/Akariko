@@ -20,11 +20,14 @@ abstract class BrowserRepository {
   Future<void> toggleBookmark(String url, {String title = ''});
   Future<void> addBookmark(String url, {String title = ''});
   Future<void> removeBookmark(String url);
+  Future<List<Bookmark>> searchBookmarks(String query, {int limit = 5});
 
   Stream<List<HistoryEntry>> watchHistory();
   Future<void> recordVisit(String url, {String title = ''});
   Future<void> removeHistory(String id);
   Future<void> clearHistory();
+  Future<List<HistoryEntry>> searchHistory(String query, {int limit = 5});
+  Future<List<HistoryEntry>> recentHistory({int limit = 6});
 }
 
 class DriftBrowserRepository implements BrowserRepository {
@@ -112,6 +115,12 @@ class DriftBrowserRepository implements BrowserRepository {
       _db.browserDao.removeBookmarkByUrl(url);
 
   @override
+  Future<List<Bookmark>> searchBookmarks(String query, {int limit = 5}) async =>
+      (await _db.browserDao.searchBookmarks(query, limit: limit))
+          .map(Bookmark.fromRow)
+          .toList();
+
+  @override
   Stream<List<HistoryEntry>> watchHistory() => _db.browserDao
       .watchHistory()
       .map((rows) => rows.map(HistoryEntry.fromRow).toList());
@@ -141,4 +150,16 @@ class DriftBrowserRepository implements BrowserRepository {
   @override
   Future<void> removeHistory(String id) =>
       _db.browserDao.removeHistory(id);
+
+  @override
+  Future<List<HistoryEntry>> searchHistory(String query, {int limit = 5}) async =>
+      (await _db.browserDao.searchHistory(query, limit: limit))
+          .map(HistoryEntry.fromRow)
+          .toList();
+
+  @override
+  Future<List<HistoryEntry>> recentHistory({int limit = 6}) async =>
+      (await _db.browserDao.recentHistory(limit: limit))
+          .map(HistoryEntry.fromRow)
+          .toList();
 }

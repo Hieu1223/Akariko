@@ -25,6 +25,9 @@ dependencies:
   # WebView / browser engine (JS injection, screenshots, custom context menu)
   flutter_inappwebview: ^6.1.1
 
+  # HTTP (search-suggestion autocomplete); one keep-alive client is reused.
+  http: ^1.6.0
+
   # Relational storage
   drift: ^2.24.0
   drift_flutter: ^0.2.2

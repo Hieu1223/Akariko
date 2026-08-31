@@ -7,11 +7,13 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../app/theme/ui_prefs_notifier.dart';
 import '../../core/utils/extensions.dart';
+import '../../data/models/search_suggestion.dart';
 import '../../data/models/tab_model.dart';
 import '../../modules/ai_launcher_module.dart';
 import '../../modules/browser_module.dart';
 import '../../modules/webview_bridge_module.dart';
 import '../dictionary/popup_dictionary_viewmodel.dart';
+import 'address_suggestions_viewmodel.dart';
 import 'browser_nav_state.dart';
 import 'webview_instance_manager.dart';
 
@@ -71,9 +73,14 @@ class BrowserViewModel extends Notifier<BrowserState> {
   late final WebViewInstanceManager manager;
   final TextEditingController addressController = TextEditingController();
 
+  /// Focus of the address bar. Owned here (not by the view) so the shell, the
+  /// suggestion overlay and the scroll handler can all reason about "is the user
+  /// editing the address?" without walking the focus tree.
+  final FocusNode addressFocusNode = FocusNode(debugLabel: 'addressBar');
+
   /// 0 = chrome fully visible, 1 = fully collapsed. Driven directly by scroll
   /// position so the bar tracks the finger instead of snapping.
-  final chromeOffset = ValueNotifier<double>(0);
+  final chromeOffset = ChromeOffsetNotifier(0);
 
   int _lastScrollY = 0;
   DateTime _lastScrollProcess = DateTime.fromMicrosecondsSinceEpoch(0);
@@ -85,6 +92,7 @@ class BrowserViewModel extends Notifier<BrowserState> {
     manager = WebViewInstanceManager(ref);
     ref.keepAlive();
     _init();
+    addressFocusNode.addListener(_onAddressFocusChanged);
     ref.read(webviewBridgeServiceProvider).selectionStream.listen((sel) {
       ref.read(popupDictionaryViewModelProvider.notifier).onSelection(sel);
     }).let((sub) => ref.onDispose(sub.cancel));
@@ -92,6 +100,8 @@ class BrowserViewModel extends Notifier<BrowserState> {
       _sub?.cancel();
       manager.dispose();
       chromeOffset.dispose();
+      addressFocusNode.removeListener(_onAddressFocusChanged);
+      addressFocusNode.dispose();
       addressController.dispose();
     });
     return const BrowserState(tabs: [], activeTabId: '');
@@ -104,6 +114,69 @@ class BrowserViewModel extends Notifier<BrowserState> {
   TabModel? get activeTab => state.activeTab;
 
   BrowserNavViewModel get _nav => ref.read(browserNavProvider.notifier);
+
+  AddressSuggestionsViewModel get _suggestions =>
+      ref.read(addressSuggestionsProvider.notifier);
+
+  /// True while the address bar is being edited (the suggestion overlay is up).
+  bool get isEditingAddress => ref.read(addressSuggestionsProvider).visible;
+
+  // ── Address bar editing / suggestions ──────────────────────────────────────
+  void _onAddressFocusChanged() {
+    if (addressFocusNode.hasFocus) {
+      // Focusing opens with an empty query: the user sees recently visited pages
+      // and the current page's URL is never sent to the suggest endpoint. The
+      // first keystroke is what starts a lookup.
+      _suggestions.open('');
+      // Browser convention: focusing the bar selects the whole URL so typing
+      // replaces it. Deferred a frame so the tap that gave us focus (which sets
+      // its own caret position) doesn't undo it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!addressFocusNode.hasFocus) return;
+        final text = addressController.text;
+        if (text.isEmpty) return;
+        addressController.selection =
+            TextSelection(baseOffset: 0, extentOffset: text.length);
+      });
+    } else {
+      _suggestions.close();
+    }
+  }
+
+  /// Called from the address field's `onChanged`.
+  void onAddressChanged(String query) => _suggestions.onQueryChanged(query);
+
+  /// Trailing "X": empties the field and shows recent pages again.
+  void clearAddress() {
+    addressController.clear();
+    _suggestions.open('');
+  }
+
+  /// Leaves editing mode without navigating: closes the overlay, drops the
+  /// keyboard and restores the current page's URL in the bar.
+  ///
+  /// This is what the OS back button runs while the overlay is open, so back
+  /// returns to the page instead of stepping through the WebView's history.
+  void cancelAddressEditing() {
+    _suggestions.close();
+    addressFocusNode.unfocus();
+    _resetAddressBar();
+  }
+
+  /// Opens a suggestion in the active tab.
+  void openSuggestion(SearchSuggestion suggestion) {
+    _suggestions.close();
+    addressFocusNode.unfocus();
+    navigateTo(suggestion.target).ignore();
+  }
+
+  /// Puts a suggestion in the bar for further editing (the "↖" button) without
+  /// navigating; keeps focus and refreshes the list for the new text.
+  void fillAddress(String text) {
+    addressController.text = text;
+    addressController.selection = TextSelection.collapsed(offset: text.length);
+    _suggestions.onQueryChanged(text);
+  }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────
   Future<void> _init() async {
@@ -242,6 +315,16 @@ class BrowserViewModel extends Notifier<BrowserState> {
   Future<void> navigateTo(String input) async {
     final tab = state.activeTab;
     if (tab == null) return;
+    if (input.trim().isEmpty) {
+      // Submitting an empty bar should return to the page, not load a blank
+      // search results page.
+      cancelAddressEditing();
+      return;
+    }
+    // Leaving edit mode is part of navigating, however it was triggered
+    // (submit, suggestion tap, quick-access tile, context menu).
+    _suggestions.close();
+    if (addressFocusNode.hasFocus) addressFocusNode.unfocus();
     final target = input.toLoadableUrl();
     await _module.updateTab(tab.id, url: target);
     state = state.copyWith(
@@ -340,7 +423,8 @@ class BrowserViewModel extends Notifier<BrowserState> {
     if (u == null || u.isEmpty || u == kHomeUrl) return;
     _setTabUrlInState(tabId, u);
     if (tabId == state.activeTabId) {
-      addressController.text = u;
+      // Never overwrite what the user is typing with a page-driven URL update.
+      if (!addressFocusNode.hasFocus) addressController.text = u;
       _refreshNavStateActive();
     }
     _module.recordVisit(u).ignore();
@@ -349,14 +433,23 @@ class BrowserViewModel extends Notifier<BrowserState> {
   void onScrollChanged(String tabId, int y) {
     manager.onScrollChanged(tabId, y);
     if (tabId != state.activeTabId) return;
-    // Throttle the (relatively expensive) focus/chrome work to ~24 Hz so we
-    // don't hit the focus tree and rebuild the chrome on every scroll frame.
+    // Manipulating the page releases the address-bar input. Checking our own
+    // node is a single field read — the previous version walked the global focus
+    // tree (`FocusManager.instance.primaryFocus`) on every throttled tick.
+    if (addressFocusNode.hasFocus) cancelAddressEditing();
+    // The collapsible chrome is opt-in: while no widget listens to
+    // [chromeOffset] (the shell currently renders a static bar) the scroll
+    // callback must not pay for a prefs lookup and the offset math on every
+    // frame of every scroll.
+    if (!chromeOffset.isObserved) {
+      _lastScrollY = y;
+      return;
+    }
+    // Throttle the chrome work to ~24 Hz so a scroll frame doesn't rebuild the
+    // chrome every time.
     final now = DateTime.now();
     if (now.difference(_lastScrollProcess) < _scrollInterval) return;
     _lastScrollProcess = now;
-    // Dismissing the keyboard when the page is manipulated satisfies "tapping
-    // elsewhere releases the address-bar input".
-    FocusManager.instance.primaryFocus?.unfocus();
     if (!ref.read(uiPrefsProvider).autoHideChrome) {
       if (chromeOffset.value != 0) chromeOffset.value = 0;
       _lastScrollY = y;
@@ -395,12 +488,13 @@ class BrowserViewModel extends Notifier<BrowserState> {
     final text =
         (active != null && active.url != kHomeUrl) ? active.url : '';
     addressController.text = text;
-    FocusManager.instance.primaryFocus?.unfocus();
+    if (addressFocusNode.hasFocus) addressFocusNode.unfocus();
     addressController.selection =
         TextSelection.collapsed(offset: text.length);
   }
 
   void _syncAddressBar() {
+    if (addressFocusNode.hasFocus) return; // user is typing — leave it alone
     final active = state.activeTab;
     if (active != null && active.url != kHomeUrl) {
       if (addressController.text != active.url) {
@@ -469,4 +563,16 @@ class BrowserViewModel extends Notifier<BrowserState> {
 /// Tiny helper so we can `ref.onDispose(sub.cancel)` inline.
 extension _LetExtension<T> on T {
   void let(void Function(T) block) => block(this);
+}
+
+/// Collapse progress of the top chrome, which also reports whether anything is
+/// listening.
+///
+/// [ChangeNotifier.hasListeners] is `@protected`, so exposing it here lets the
+/// scroll handler skip work that nothing would render.
+class ChromeOffsetNotifier extends ValueNotifier<double> {
+  ChromeOffsetNotifier(super.value);
+
+  /// True when at least one widget listens to this notifier.
+  bool get isObserved => hasListeners;
 }

@@ -17,6 +17,7 @@ class UiPrefs {
     this.ocrEnabled = false,
     this.chatGptPrompt = _defaultChatGptPrompt,
     this.autoHideChrome = true,
+    this.searchSuggestionsEnabled = true,
     this.maxTabHistory = 20,
     this.cachedTabCount = 2,
     this.tabPageTimeoutSec = 30,
@@ -35,6 +36,10 @@ class UiPrefs {
   final bool ocrEnabled;
   final String chatGptPrompt;
   final bool autoHideChrome;
+
+  /// Send the address-bar text to Google's autocomplete endpoint while typing.
+  /// When off, suggestions come only from local history and bookmarks.
+  final bool searchSuggestionsEnabled;
   final int maxTabHistory;
   final int cachedTabCount;
   final int tabPageTimeoutSec;
@@ -58,6 +63,7 @@ class UiPrefs {
     bool? ocrEnabled,
     String? chatGptPrompt,
     bool? autoHideChrome,
+    bool? searchSuggestionsEnabled,
     int? maxTabHistory,
     int? cachedTabCount,
     int? tabPageTimeoutSec,
@@ -76,6 +82,8 @@ class UiPrefs {
         ocrEnabled: ocrEnabled ?? this.ocrEnabled,
         chatGptPrompt: chatGptPrompt ?? this.chatGptPrompt,
         autoHideChrome: autoHideChrome ?? this.autoHideChrome,
+        searchSuggestionsEnabled:
+            searchSuggestionsEnabled ?? this.searchSuggestionsEnabled,
         maxTabHistory: maxTabHistory ?? this.maxTabHistory,
         cachedTabCount: cachedTabCount ?? this.cachedTabCount,
         tabPageTimeoutSec: tabPageTimeoutSec ?? this.tabPageTimeoutSec,
@@ -111,6 +119,8 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
     final prompt = _box.get(PrefKeys.chatGptPrompt,
         defaultValue: UiPrefs._defaultChatGptPrompt) as String;
     final autoHide = _box.get(PrefKeys.autoHideChrome, defaultValue: true);
+    final suggestions =
+        _box.get(PrefKeys.searchSuggestionsEnabled, defaultValue: true);
     final maxHistory = _box.get(PrefKeys.maxTabHistory, defaultValue: 20);
     final cachedCount = _box.get(PrefKeys.cachedTabCount, defaultValue: 2);
     final pageTimeout =
@@ -139,6 +149,7 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
       ocrEnabled: ocr as bool,
       chatGptPrompt: prompt,
       autoHideChrome: autoHide as bool,
+      searchSuggestionsEnabled: suggestions as bool,
       maxTabHistory: (maxHistory as num).toInt(),
       cachedTabCount: (cachedCount as num).toInt(),
       tabPageTimeoutSec: (pageTimeout as num).toInt(),
@@ -195,6 +206,11 @@ class UiPrefsNotifier extends Notifier<UiPrefs> {
   Future<void> setAutoHideChrome(bool enabled) async {
     await _box.put(PrefKeys.autoHideChrome, enabled);
     state = state.copyWith(autoHideChrome: enabled);
+  }
+
+  Future<void> setSearchSuggestionsEnabled(bool enabled) async {
+    await _box.put(PrefKeys.searchSuggestionsEnabled, enabled);
+    state = state.copyWith(searchSuggestionsEnabled: enabled);
   }
 
   Future<void> setMaxTabHistory(int value) async {

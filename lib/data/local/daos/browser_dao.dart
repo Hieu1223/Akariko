@@ -53,6 +53,20 @@ class BrowserDao extends DatabaseAccessor<AppDatabase>
   Future<void> removeBookmarkByUrl(String url) =>
       (delete(db.bookmarksTable)..where((b) => b.url.equals(url))).go();
 
+  /// Bookmarks whose url or title matches [query], newest first, capped at
+  /// [limit].
+  ///
+  /// Used by the address-bar suggestion list: a bounded `LIKE` + `LIMIT` query
+  /// keeps the hot typing path off the full-table `watchBookmarks` stream.
+  Future<List<BookmarkRow>> searchBookmarks(String query, {int limit = 5}) {
+    final pattern = _likePattern(query);
+    return (select(db.bookmarksTable)
+          ..where((b) => b.url.like(pattern) | b.title.like(pattern))
+          ..orderBy([(b) => OrderingTerm.desc(b.createdAt)])
+          ..limit(limit))
+        .get();
+  }
+
   // ── History ─────────────────────────────────────────────────────────
   Stream<List<HistoryRow>> watchHistory() =>
       (select(db.historyTable)
@@ -86,4 +100,33 @@ class BrowserDao extends DatabaseAccessor<AppDatabase>
           title: title == null ? const Value.absent() : Value(title),
         ),
       );
+
+  /// The [limit] most recently visited rows, newest first.
+  ///
+  /// Cheaper than [watchHistory] for one-shot reads (address-bar suggestions):
+  /// no stream is kept open and SQLite stops after `limit` rows.
+  Future<List<HistoryRow>> recentHistory({int limit = 6}) =>
+      (select(db.historyTable)
+            ..orderBy([(h) => OrderingTerm.desc(h.visitedAt)])
+            ..limit(limit))
+          .get();
+
+  /// History rows whose url or title matches [query], newest first, capped at
+  /// [limit]. Filtering happens in SQLite instead of in memory.
+  Future<List<HistoryRow>> searchHistory(String query, {int limit = 5}) {
+    final pattern = _likePattern(query);
+    return (select(db.historyTable)
+          ..where((h) => h.url.like(pattern) | h.title.like(pattern))
+          ..orderBy([(h) => OrderingTerm.desc(h.visitedAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  /// Builds a `%…%` pattern for a `LIKE` filter.
+  ///
+  /// The value is always passed as a bound parameter (no SQL injection), but
+  /// `%`/`_` inside the query would act as wildcards, so they are dropped —
+  /// a suggestion list should match literally what the user typed.
+  static String _likePattern(String query) =>
+      '%${query.trim().replaceAll(RegExp(r'[%_\\]'), '')}%';
 }

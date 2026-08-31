@@ -31,12 +31,18 @@ class BrowserModule {
   Future<void> addBookmark(String url, {String title = ''}) =>
       repository.addBookmark(url, title: title);
   Future<void> removeBookmark(String url) => repository.removeBookmark(url);
+  Future<List<Bookmark>> searchBookmarks(String query, {int limit = 5}) =>
+      repository.searchBookmarks(query, limit: limit);
 
   Stream<List<HistoryEntry>> watchHistory() => repository.watchHistory();
   Future<void> recordVisit(String url, {String title = ''}) =>
       repository.recordVisit(url, title: title);
   Future<void> removeHistory(String id) => repository.removeHistory(id);
   Future<void> clearHistory() => repository.clearHistory();
+  Future<List<HistoryEntry>> searchHistory(String query, {int limit = 5}) =>
+      repository.searchHistory(query, limit: limit);
+  Future<List<HistoryEntry>> recentHistory({int limit = 6}) =>
+      repository.recentHistory(limit: limit);
 }
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
