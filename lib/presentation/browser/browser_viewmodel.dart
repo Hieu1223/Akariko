@@ -554,9 +554,17 @@ class BrowserViewModel extends Notifier<BrowserState> {
     );
   }
 
-  /// Opens a web-search for [text] in the active tab.
+  /// Opens a web-search for [text] in a new tab, leaving the current tab intact.
   Future<void> webSearch(String text) async {
-    await navigateTo(text);
+    final target = text.toLoadableUrl();
+    final tab = await _module.createTab(url: target, title: '');
+    manager.activeTabId = tab.id;
+    _nav.setLoading(false);
+    final newCached = _ensureCached(tab.id);
+    manager.cancelRelease(tab.id);
+    state = state.copyWith(activeTabId: tab.id, cachedTabIds: newCached);
+    _resetAddressBar();
+    _refreshNavStateActive();
   }
 }
 
