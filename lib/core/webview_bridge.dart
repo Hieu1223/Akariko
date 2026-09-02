@@ -36,6 +36,11 @@ abstract class WebviewBridgeService {
   /// means the selection was cleared and any popup should dismiss.
   Stream<WebSelection> get selectionStream;
 
-  /// Tears down the stream. Call when the browser session ends.
+  /// Stream of URL-open requests originating from in-app HTML pages (e.g. the
+  /// home page's quick-access tiles and news articles). The payload is the URL
+  /// to navigate to.
+  Stream<String> get urlOpenStream;
+
+  /// Tears down the streams. Call when the browser session ends.
   void dispose();
 }

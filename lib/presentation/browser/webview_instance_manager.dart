@@ -58,8 +58,7 @@ class WebViewInstanceManager {
     _cachedOrder.remove(tabId);
   }
 
-  void ensureCached(String id, {required bool isHome}) {
-    if (isHome) return;
+  void ensureCached(String id) {
     _cachedOrder.remove(id);
     _cachedOrder.insert(0, id);
     while (_cachedOrder.length > _cachedCount) {

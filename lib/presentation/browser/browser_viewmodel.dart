@@ -5,16 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../app/router.dart';
 import '../../app/theme/ui_prefs_notifier.dart';
+import '../../core/constants/routes.dart';
 import '../../core/utils/extensions.dart';
 import '../../data/models/search_suggestion.dart';
 import '../../data/models/tab_model.dart';
+import '../../data/native/webview_bridge_service.dart';
 import '../../modules/ai_launcher_module.dart';
 import '../../modules/browser_module.dart';
 import '../../modules/webview_bridge_module.dart';
 import '../dictionary/popup_dictionary_viewmodel.dart';
 import 'address_suggestions_viewmodel.dart';
 import 'browser_nav_state.dart';
+import 'home_data_provider.dart';
 import 'webview_instance_manager.dart';
 
 /// Phase-1 structural state for the browser shell.
@@ -51,7 +55,7 @@ class BrowserState {
       );
 }
 
-const String kHomeUrl = 'about:home';
+const String kHomeUrl = 'yomu://home';
 
 /// Drives the Browser shell: tab list, per-tab history, and a pool of live
 /// WebViews for the most recently used tabs.
@@ -95,6 +99,17 @@ class BrowserViewModel extends Notifier<BrowserState> {
     addressFocusNode.addListener(_onAddressFocusChanged);
     ref.read(webviewBridgeServiceProvider).selectionStream.listen((sel) {
       ref.read(popupDictionaryViewModelProvider.notifier).onSelection(sel);
+    }).let((sub) => ref.onDispose(sub.cancel));
+    // URL-open requests from in-app HTML pages (home page tiles / articles /
+    // "Manage sources"). Routed through the shared bridge stream so any tab's
+    // controller can raise the event.
+    ref.read(webviewBridgeServiceProvider).urlOpenStream.listen((url) {
+      if (url == kManageSourcesSentinel) {
+        // The home page's "Manage sources" link. No tab navigation needed.
+        ref.read(routerProvider).pushNamed(Routes.newsSources);
+      } else {
+        navigateTo(url);
+      }
     }).let((sub) => ref.onDispose(sub.cancel));
     ref.onDispose(() {
       _sub?.cancel();
@@ -254,9 +269,8 @@ class BrowserViewModel extends Notifier<BrowserState> {
   /// cached tab ids so the caller can mirror it into [BrowserState] in a single
   /// `state` write (#9 — batch rebuilds instead of writing on every step).
   List<String> _ensureCached(String id) {
-    final tab = state.tabs.where((t) => t.id == id).firstOrNull;
     manager.activeTabId = state.activeTabId;
-    manager.ensureCached(id, isHome: tab?.url == kHomeUrl);
+    manager.ensureCached(id);
     return manager.cachedTabIds;
   }
 
@@ -344,6 +358,16 @@ class BrowserViewModel extends Notifier<BrowserState> {
     await _refreshBookmarkState();
   }
 
+  /// Loads the in-app home page into [tabId]'s WebView. Replaces the WebView's
+  /// content with the HTML template + injected feed data (bookmarks + news).
+  /// Called from `onLoadStart` when a tab navigates to [kHomeUrl].
+  Future<void> loadHomePage(String tabId) async {
+    final c = manager[tabId];
+    if (c == null) return;
+    final html = ref.read(homeHtmlProvider);
+    await c.loadData(data: html);
+  }
+
   // ── Per-tab history (delegated to the WebView's own back/forward stack) ────
   Future<void> goBack() async {
     final c = controller;
@@ -381,7 +405,14 @@ class BrowserViewModel extends Notifier<BrowserState> {
       revealChrome();
       ref.read(popupDictionaryViewModelProvider.notifier).hide();
     }
-    if (u.isNotEmpty && u != kHomeUrl) _setTabUrlInState(tabId, u);
+    if (u == kHomeUrl) {
+      // The in-app home page: replace the WebView's content with the HTML
+      // template + injected feed data. The WebView is already mounted (it was
+      // created with [kHomeUrl] as its initial URL), so we just swap content.
+      loadHomePage(tabId);
+      return;
+    }
+    if (u.isNotEmpty) _setTabUrlInState(tabId, u);
   }
 
   void onLoadStop(String tabId, WebUri? url) {
@@ -394,7 +425,9 @@ class BrowserViewModel extends Notifier<BrowserState> {
       _module.updateTab(tabId, url: u);
     }
     final c = manager[tabId];
-    if (c != null) ref.read(webviewBridgeServiceProvider).injectListener(c);
+    if (c != null && u != kHomeUrl) {
+      ref.read(webviewBridgeServiceProvider).injectListener(c);
+    }
     ref.read(popupDictionaryViewModelProvider.notifier).hide();
     if (tabId == state.activeTabId) {
       _refreshBookmarkState();

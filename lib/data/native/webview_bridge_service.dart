@@ -6,6 +6,10 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../core/webview_bridge.dart';
 
+/// Sentinel URL emitted on [WebviewBridgeService.urlOpenStream] when the
+/// in-app home page's "Manage sources" link is tapped.
+const String kManageSourcesSentinel = 'yomu://manage-sources';
+
 /// `flutter_inappwebview` implementation of [WebviewBridgeService].
 ///
 /// Injects a small selection listener that posts `{text, rect}` to a JS handler
@@ -14,12 +18,19 @@ import '../../core/webview_bridge.dart';
 /// selection stream is shared process-wide so any part of the UI can react.
 class InAppWebviewBridgeService implements WebviewBridgeService {
   static const String _handlerName = 'yomuSelection';
+  static const String _urlOpenHandler = 'yomuOpenUrl';
+  static const String _manageSourcesHandler = 'yomuManageSources';
 
   final StreamController<WebSelection> _stream =
       StreamController<WebSelection>.broadcast();
+  final StreamController<String> _urlOpenStream =
+      StreamController<String>.broadcast();
 
   @override
   Stream<WebSelection> get selectionStream => _stream.stream;
+
+  @override
+  Stream<String> get urlOpenStream => _urlOpenStream.stream;
 
   @override
   void registerHandler(InAppWebViewController controller) {
@@ -32,6 +43,17 @@ class InAppWebviewBridgeService implements WebviewBridgeService {
         final raw = args.isNotEmpty ? args[0] : null;
         _emit(raw);
       },
+    );
+    controller.addJavaScriptHandler(
+      handlerName: _urlOpenHandler,
+      callback: (args) {
+        final url = args.isNotEmpty ? args[0] as String? : null;
+        if (url != null && url.isNotEmpty) _urlOpenStream.add(url);
+      },
+    );
+    controller.addJavaScriptHandler(
+      handlerName: _manageSourcesHandler,
+      callback: (_) => _urlOpenStream.add(kManageSourcesSentinel),
     );
   }
 
@@ -66,7 +88,10 @@ class InAppWebviewBridgeService implements WebviewBridgeService {
   }
 
   @override
-  void dispose() => _stream.close();
+  void dispose() {
+    _stream.close();
+    _urlOpenStream.close();
+  }
 
   /// Installs a `selectionchange` listener that debounces and reports the
   /// current selection's text + bounding rect to the Dart side. Guards against

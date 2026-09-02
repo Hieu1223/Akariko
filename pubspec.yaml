@@ -63,3 +63,6 @@ flutter:
     # by `tool/build_dictionary.dart`. Decoded once at startup into an in-memory
     # prefix trie — no SQLite table, no on-device JSON parse.
     - lib/asset/dictionary.dat
+    # In-app home page (new-tab) template. Loaded once at startup, then
+    # feed data (bookmarks + news) is injected per navigation via loadData().
+    - lib/asset/home.html

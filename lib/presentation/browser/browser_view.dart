@@ -14,7 +14,6 @@ import '../common_widgets/safari_address_bar.dart';
 import 'address_suggestions_overlay.dart';
 import 'browser_viewmodel.dart';
 import 'browser_nav_state.dart';
-import 'new_tab_view.dart';
 import 'perf_overlay.dart';
 
 /// Main browser shell: address bar + (WebView | Home) + bottom toolbar.
@@ -30,12 +29,8 @@ class BrowserView extends ConsumerWidget {
     final prefs = ref.watch(uiPrefsProvider);
     final activeTabId =
         ref.watch(browserViewModelProvider.select((s) => s.activeTabId));
-    final activeUrl = ref.watch(
-      browserViewModelProvider.select((s) => s.activeTab?.url ?? ''),
-    );
     final tabCount =
         ref.watch(browserViewModelProvider.select((s) => s.tabs.length));
-    final showHome = activeUrl == 'about:home' || activeUrl.isEmpty;
     final showPerfOverlay = ref.watch(
       uiPrefsProvider.select((s) => s.perfOverlayEnabled),
     );
@@ -56,13 +51,11 @@ class BrowserView extends ConsumerWidget {
           onSubmitted: (q) => vmNotifier.navigateTo(q),
           trailing: IconButton(
             icon: Icon(
-              (!showHome && nav.isBookmarked)
-                  ? Icons.bookmark
-                  : Icons.bookmark_border,
+              (!nav.isBookmarked) ? Icons.bookmark : Icons.bookmark_border,
               size: 18,
             ),
             onPressed: () {
-              if (activeTabId.isNotEmpty && !showHome) {
+              if (activeTabId.isNotEmpty) {
                 vmNotifier.onToggleBookmark();
               }
             },
@@ -96,10 +89,7 @@ class BrowserView extends ConsumerWidget {
             children: [
               for (final id in cachedIds)
                 _webViewTile(id, tabs, vmNotifier, activeTabId),
-              if (showHome)
-                const Positioned.fill(child: NewTabView())
-              else
-                const Positioned.fill(child: PopupDictionaryOverlay()),
+              const Positioned.fill(child: PopupDictionaryOverlay()),
               // Address-bar suggestions live in the shell (not a pushed route),
               // so the WebView underneath is never detached and the shell's
               // back handler can dismiss them.

@@ -12,6 +12,7 @@ import 'data/local/app_database.dart';
 import 'data/local/hive_boxes.dart';
 import 'modules/browser_module.dart';
 import 'modules/dictionary_module.dart';
+import 'presentation/browser/home_data_provider.dart';
 
 /// Asset key of the prebuilt, compressed in-memory dictionary trie.
 const String kDictionaryAssetKey = 'lib/asset/dictionary.dat';
@@ -35,6 +36,10 @@ Future<void> main() async {
     Uint8List.fromList(GZipCodec().decode(dictBytes)),
   );
 
+  // 4. Home page HTML template: load once, then override the provider so the
+  //    browser can inject feed data per navigation without re-reading the asset.
+  final homeHtml = await loadHomeHtmlTemplate();
+
   runApp(
     ProviderScope(
       overrides: [
@@ -42,6 +47,7 @@ Future<void> main() async {
         uiPrefsBoxProvider.overrideWithValue(prefsBox),
         settingsBoxProvider.overrideWithValue(settingsBox),
         inMemoryDictionaryProvider.overrideWithValue(dictionary),
+        homeHtmlTemplateProvider.overrideWithValue(homeHtml),
       ],
       child: const YomuApp(),
     ),
