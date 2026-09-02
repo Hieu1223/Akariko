@@ -35,11 +35,23 @@ class DownloadListView extends ConsumerWidget {
       ),
       body: vm.items.isEmpty
           ? const Center(child: Text('No downloads'))
-          : ListView.separated(
-              itemCount: vm.items.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) => _DownloadTile(item: vm.items[i]),
+          : const RepaintBoundary(
+              child: _DownloadListView(),
             ),
+    );
+  }
+}
+
+class _DownloadListView extends ConsumerWidget {
+  const _DownloadListView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(downloadListViewModelProvider);
+    return ListView.separated(
+      itemCount: vm.items.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, i) => _DownloadTile(item: vm.items[i]),
     );
   }
 }

@@ -59,6 +59,7 @@ class TabSwitcherView extends ConsumerWidget {
         ],
       ),
       body: ListView.separated(
+        addRepaintBoundaries: true,
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: vm.tabs.length,
         separatorBuilder: (_, _) => const Divider(height: 1),

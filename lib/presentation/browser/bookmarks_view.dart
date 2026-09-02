@@ -23,14 +23,26 @@ class BookmarksView extends ConsumerWidget {
       ),
       body: vm.bookmarks.isEmpty
           ? const Center(child: Text('No bookmarks yet'))
-          : ListView.separated(
-              itemCount: vm.bookmarks.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final b = vm.bookmarks[i];
-                return _BookmarkTile(bookmark: b);
-              },
+          : const RepaintBoundary(
+              child: _BookmarkListView(),
             ),
+    );
+  }
+}
+
+class _BookmarkListView extends ConsumerWidget {
+  const _BookmarkListView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(bookmarksViewModelProvider);
+    return ListView.separated(
+      itemCount: vm.bookmarks.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final b = vm.bookmarks[i];
+        return _BookmarkTile(bookmark: b);
+      },
     );
   }
 }
