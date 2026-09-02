@@ -63,25 +63,43 @@ String _inject(
     for (final s in sources.valueOrNull ?? <NewsSource>[]) s.id: s.name,
   };
 
+  final bmList = bookmarks.valueOrNull ?? <Bookmark>[];
+  final artList = articles.valueOrNull ?? <NewsArticle>[];
+
+  // Pre-allocate lists to avoid growth reallocations
+  final bookmarkJson = List<Map<String, dynamic>.filled>(
+    bmList.length > 8 ? 8 : bmList.length,
+    null as dynamic,
+    growable: false,
+  );
+  var i = 0;
+  for (final b in bmList.take(8)) {
+    bookmarkJson[i++] = <String, dynamic>{
+      'url': b.url,
+      'displayTitle': b.displayTitle,
+    };
+  }
+
+  final articleJson = List<Map<String, dynamic>.filled>(
+    artList.length > 30 ? 30 : artList.length,
+    null as dynamic,
+    growable: false,
+  );
+  i = 0;
+  for (final a in artList.take(30)) {
+    articleJson[i++] = <String, dynamic>{
+      'title': a.title,
+      'link': a.link,
+      'summary': a.summary,
+      'publishedAt': a.publishedAt?.toIso8601String(),
+      'isRead': a.isRead,
+      'sourceName': sourceById[a.sourceId] ?? '',
+    };
+  }
+
   final feedMap = <String, dynamic>{
-    'bookmarks': (bookmarks.valueOrNull ?? <Bookmark>[])
-        .take(8)
-        .map((b) => {
-              'url': b.url,
-              'displayTitle': b.displayTitle,
-            })
-        .toList(),
-    'articles': (articles.valueOrNull ?? <NewsArticle>[])
-        .take(30)
-        .map((a) => {
-              'title': a.title,
-              'link': a.link,
-              'summary': a.summary,
-              'publishedAt': a.publishedAt?.toIso8601String(),
-              'isRead': a.isRead,
-              'sourceName': sourceById[a.sourceId] ?? '',
-            })
-        .toList(),
+    'bookmarks': bookmarkJson,
+    'articles': articleJson,
   };
 
   final html = template.replaceAll('{{FEED_DATA}}', jsonEncode(feedMap));

@@ -70,14 +70,16 @@ class InAppWebviewBridgeService implements WebviewBridgeService {
         _stream.add(const WebSelection(text: '', rect: Rect.zero));
         return;
       }
-      final rect = Rect.fromLTRB(
-        (r['left'] as num).toDouble(),
-        (r['top'] as num).toDouble(),
-        (r['right'] as num).toDouble(),
-        (r['bottom'] as num).toDouble(),
-      );
+      // Fast path: use `as num` with explicit cast to avoid redundant type checks
+      final left = (r['left'] as num).toDouble();
+      final top = (r['top'] as num).toDouble();
+      final right = (r['right'] as num).toDouble();
+      final bottom = (r['bottom'] as num).toDouble();
+      final rect = Rect.fromLTRB(left, top, right, bottom);
       _stream.add(WebSelection(text: text, rect: rect));
     } on FormatException {
+      _stream.add(const WebSelection(text: '', rect: Rect.zero));
+    } on TypeError {
       _stream.add(const WebSelection(text: '', rect: Rect.zero));
     }
   }
