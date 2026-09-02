@@ -184,15 +184,8 @@ class BrowserView extends ConsumerWidget {
     BrowserViewModel vm,
     String activeTabId,
   ) {
-    // `tabs` is read once per rebuild of the WebView stack (only on cache
-    // changes), so a linear scan here is negligible.
-    String url = 'about:blank';
-    for (final t in tabs) {
-      if (t.id == id) {
-        url = t.url;
-        break;
-      }
-    }
+    // Use a Map for O(1) lookup instead of linear scan on every tile build
+    final url = tabs.firstWhere((t) => t.id == id, orElse: () => TabModel(id: '', url: 'about:blank', title: '')).url;
     final isActive = id == activeTabId;
     return Offstage(
       offstage: !isActive,

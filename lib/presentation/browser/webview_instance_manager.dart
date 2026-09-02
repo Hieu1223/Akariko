@@ -59,6 +59,14 @@ class WebViewInstanceManager {
   }
 
   void ensureCached(String id) {
+    // Fast path: if already first, skip the remove/insert churn
+    if (_cachedOrder.isNotEmpty && _cachedOrder.first == id) {
+      // Still need to trim if cachedCount decreased in prefs
+      while (_cachedOrder.length > _cachedCount) {
+        _releaseTab(_cachedOrder.removeLast());
+      }
+      return;
+    }
     _cachedOrder.remove(id);
     _cachedOrder.insert(0, id);
     while (_cachedOrder.length > _cachedCount) {

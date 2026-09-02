@@ -24,58 +24,144 @@ class NewTabView extends ConsumerStatefulWidget {
 }
 
 class _NewTabViewState extends ConsumerState<NewTabView> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoadingMore = false;
+  int _currentPage = 1;
+  static const int _pageSize = 30;
+  
+  // Filter state
+  String? _selectedSourceFilter;
+  bool _showUnreadOnly = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(newTabViewModelProvider);
     final prefs = ref.watch(uiPrefsProvider);
+    
+    // Apply filters
+    var filteredArticles = vm.articles;
+    if (_selectedSourceFilter != null) {
+      filteredArticles = filteredArticles
+          .where((a) => a.sourceId == _selectedSourceFilter)
+          .toList();
+    }
+    if (_showUnreadOnly) {
+      filteredArticles = filteredArticles
+          .where((a) => !a.isRead)
+          .toList();
+    }
 
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => ref.read(newTabViewModelProvider.notifier).refreshNews(),
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            children: [
-              const SizedBox(height: 8),
-              Icon(Icons.menu_book_rounded,
-                  size: 56, color: prefs.accentColor),
-              const SizedBox(height: 16),
-              Text(
-                'Yomu',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              if (vm.bookmarks.isNotEmpty) ...[
-                Text('Quick access',
-                    style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: vm.bookmarks
-                      .take(8)
-                      .map((b) => _QuickAccessTile(bookmark: b))
-                      .toList(),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (!_isLoadingMore && 
+                notification is ScrollEndNotification &&
+                notification.metrics.pixels >= 
+                    notification.metrics.maxScrollExtent - 200) {
+              // Load more articles (endless scroll)
+              _loadMoreArticles();
+            }
+            return false;
+          },
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(newTabViewModelProvider.notifier).refreshNews(),
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              children: [
+                const SizedBox(height: 8),
+                Icon(Icons.menu_book_rounded,
+                    size: 56, color: prefs.accentColor),
+                const SizedBox(height: 16),
+                Text(
+                  'Yomu',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
+                // Filter controls
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButton<String>(
+                        value: _selectedSourceFilter,
+                        hint: const Text('All sources'),
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem(value: null, child: Text('All sources')),
+                          ...vm.sources.map((s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(s.name),
+                          )),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _selectedSourceFilter = value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(_showUnreadOnly ? Icons.visibility : Icons.visibility_off),
+                      tooltip: _showUnreadOnly ? 'Show all' : 'Show unread only',
+                      onPressed: () {
+                        setState(() => _showUnreadOnly = !_showUnreadOnly);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (vm.bookmarks.isNotEmpty) ...[
+                  Text('Quick access',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: vm.bookmarks
+                        .take(8)
+                        .map((b) => _QuickAccessTile(bookmark: b))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 28),
+                ],
+                _NewsFeedSection(
+                  articles: filteredArticles.take(_currentPage * _pageSize).toList(),
+                  isRefreshing: vm.isRefreshing,
+                  isLoadingMore: _isLoadingMore,
+                  sourceNameOf: (id) =>
+                      ref.read(newTabViewModelProvider.notifier).sourceNameOf(id),
+                  onOpen: (link) =>
+                      ref.read(newTabViewModelProvider.notifier).openArticle(link),
+                ),
               ],
-              _NewsFeedSection(
-                articles: vm.articles,
-                isRefreshing: vm.isRefreshing,
-                sourceNameOf: (id) =>
-                    ref.read(newTabViewModelProvider.notifier).sourceNameOf(id),
-                onOpen: (link) =>
-                    ref.read(newTabViewModelProvider.notifier).openArticle(link),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void _loadMoreArticles() {
+    setState(() => _isLoadingMore = true);
+    // Simulate loading delay, in real app this would fetch more from API
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _currentPage++;
+          _isLoadingMore = false;
+        });
+      }
+    });
   }
 }
 
@@ -118,12 +204,14 @@ class _NewsFeedSection extends StatelessWidget {
   const _NewsFeedSection({
     required this.articles,
     required this.isRefreshing,
+    this.isLoadingMore = false,
     required this.sourceNameOf,
     required this.onOpen,
   });
 
   final List<NewsArticle> articles;
   final bool isRefreshing;
+  final bool isLoadingMore;
   final String Function(String) sourceNameOf;
   final void Function(String) onOpen;
 
@@ -155,12 +243,18 @@ class _NewsFeedSection extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(child: Text('No articles yet')),
           )
-        else
-          ...articles.take(30).map((a) => _NewsRow(
+        else ...[
+          ...articles.map((a) => _NewsRow(
                 article: a,
                 sourceName: sourceNameOf(a.sourceId),
                 onOpen: () => onOpen(a.link),
               )),
+          if (isLoadingMore)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ],
     );
   }

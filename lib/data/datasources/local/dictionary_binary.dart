@@ -199,6 +199,20 @@ class InMemoryDictionary {
         .where((t) => t.isNotEmpty)
         .toList();
     if (tokens.isEmpty) return const [];
+    // Single-token queries are the common case; use a fast path that avoids
+    // the inner loop and redundant list allocations.
+    if (tokens.length == 1) {
+      final token = tokens[0];
+      final cap = offset + limit;
+      final out = <WordEntry>[];
+      for (var i = 0; i < _meaningText.length && out.length < cap; i++) {
+        if (_meaningText[i].contains(token)) {
+          out.add(_toEntry(i));
+        }
+      }
+      return out;
+    }
+    // Multi-token: require all tokens to match (AND semantics).
     final cap = offset + limit;
     final hits = <int>[];
     for (var i = 0; i < _meaningText.length && hits.length < cap; i++) {

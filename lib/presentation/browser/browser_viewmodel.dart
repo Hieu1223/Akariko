@@ -379,11 +379,13 @@ class BrowserViewModel extends Notifier<BrowserState> {
     if (addressFocusNode.hasFocus) addressFocusNode.unfocus();
     final target = input.toLoadableUrl();
     await _module.updateTab(tab.id, url: target);
-    state = state.copyWith(
-      tabs: state.tabs
-          .map((t) => t.id == tab.id ? t.copyWith(url: target, title: '') : t)
-          .toList(),
-    );
+    // Direct index-based update avoids recreating the entire list
+    final tabIndex = state.tabs.indexWhere((t) => t.id == tab.id);
+    if (tabIndex >= 0) {
+      final updatedTabs = List<TabModel>.from(state.tabs);
+      updatedTabs[tabIndex] = state.tabs[tabIndex].copyWith(url: target, title: '');
+      state = state.copyWith(tabs: updatedTabs);
+    }
     addressController.text = target;
     if (target == kHomeUrl) {
       await loadHomePage(tab.id);
@@ -479,14 +481,14 @@ class BrowserViewModel extends Notifier<BrowserState> {
 
   void onTitleChanged(String tabId, String? title) {
     if (title == null || title.isEmpty) return;
-    final existing = state.tabs.where((t) => t.id == tabId).firstOrNull;
-    if (existing != null && existing.title == title) return;
+    final tabIndex = state.tabs.indexWhere((t) => t.id == tabId);
+    if (tabIndex < 0) return;
+    final existing = state.tabs[tabIndex];
+    if (existing.title == title) return;
     _module.updateTab(tabId, title: title).ignore();
-    state = state.copyWith(
-      tabs: state.tabs
-          .map((t) => t.id == tabId ? t.copyWith(title: title) : t)
-          .toList(),
-    );
+    final updatedTabs = List<TabModel>.from(state.tabs);
+    updatedTabs[tabIndex] = existing.copyWith(title: title);
+    state = state.copyWith(tabs: updatedTabs);
   }
 
   void onUpdateVisitedHistory(String tabId, WebUri? url, bool? androidIsReload) {
@@ -540,11 +542,12 @@ class BrowserViewModel extends Notifier<BrowserState> {
   void _setTabUrlInState(String id, String url) {
     final existing = state.tabs.where((t) => t.id == id).firstOrNull;
     if (existing != null && existing.url == url) return;
-    state = state.copyWith(
-      tabs: state.tabs
-          .map((t) => t.id == id ? t.copyWith(url: url) : t)
-          .toList(),
-    );
+    // Direct index-based update avoids recreating the entire list
+    final tabIndex = state.tabs.indexWhere((t) => t.id == id);
+    if (tabIndex < 0) return;
+    final updatedTabs = List<TabModel>.from(state.tabs);
+    updatedTabs[tabIndex] = existing.copyWith(url: url);
+    state = state.copyWith(tabs: updatedTabs);
   }
 
   /// Reveals the chrome (used after navigation / tab switches).

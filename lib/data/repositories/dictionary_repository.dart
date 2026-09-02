@@ -70,11 +70,20 @@ class InMemoryDictionaryRepository implements DictionaryRepository {
 
   @override
   Future<void> addRecentLookup(String id) async {
-    final ids =
-        recentLookupIds().where((e) => e != id).toList()..insert(0, id);
+    final stored = _settings.get(SettingsKeys.dictionaryRecentIds);
+    if (stored is! List) {
+      await _settings.put(SettingsKeys.dictionaryRecentIds, [id]);
+      return;
+    }
+    // Avoid redundant Hive writes if the ID is already at the front
+    final ids = stored.cast<String>();
+    if (ids.isNotEmpty && ids.first == id) return;
+    final updated = [id, ...ids.where((e) => e != id)];
     await _settings.put(
       SettingsKeys.dictionaryRecentIds,
-      ids.take(maxRecentLookups).toList(growable: false),
+      updated.length > maxRecentLookups
+          ? updated.sublist(0, maxRecentLookups)
+          : updated,
     );
   }
 

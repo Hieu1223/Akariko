@@ -271,7 +271,30 @@ class _TokenList extends ConsumerWidget {
                       ?.copyWith(color: Theme.of(context).hintColor),
                 ),
               )
-            else
+            else ...[
+              // Ask AI button at the top of token list
+              InkWell(
+                onTap: () {
+                  ref.read(browserViewModelProvider.notifier).askAi(query);
+                  ref.read(popupDictionaryViewModelProvider.notifier).hide();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.auto_awesome_outlined, size: 18, color: textTheme.bodyMedium?.color),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          'Ask AI',
+                          style: textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
               Flexible(
                 child: ListView.separated(
                   shrinkWrap: true,
@@ -283,6 +306,7 @@ class _TokenList extends ConsumerWidget {
                   },
                 ),
               ),
+            ],
           ],
         ),
       ),

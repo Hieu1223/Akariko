@@ -5,6 +5,8 @@ class HiveBoxes {
   static const String settings = 'settings';
   static const String prefs = 'ui_prefs';
   static const String lastTab = 'last_open_tab';
+  static const String wordLists = 'word_lists';
+  static const String videoTranscripts = 'video_transcripts';
 }
 
 /// Strongly-typed keys inside the [HiveBoxes.prefs] box.
@@ -47,4 +49,16 @@ class SettingsKeys {
 
   /// Most-recently-opened dictionary entry ids, newest first (`List<String>`).
   static const String dictionaryRecentIds = 'dictionary_recent_ids';
+}
+
+/// Strongly-typed keys inside the [HiveBoxes.wordLists] box.
+/// Box name is the website host, value is `List<WordListEntry>`.
+class WordListKeys {
+  const WordListKeys._();
+}
+
+/// Strongly-typed keys inside the [HiveBoxes.videoTranscripts] box.
+/// Key is videoId, value is `CachedVideoTranscript`.
+class VideoTranscriptKeys {
+  const VideoTranscriptKeys._();
 }
