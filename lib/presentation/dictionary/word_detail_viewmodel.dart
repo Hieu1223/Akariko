@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/token.dart';
 import '../../data/models/word_entry.dart';
+import '../../modules/anki_module.dart';
 import '../../modules/dictionary_module.dart';
 import '../../modules/tokenizer_module.dart';
 
@@ -12,8 +13,11 @@ final wordDetailViewModelProvider = AsyncNotifierProvider.autoDispose
 
 class WordDetailViewModel
     extends AutoDisposeFamilyAsyncNotifier<WordEntry?, String> {
+  late final AnkiService _anki;
+
   @override
   Future<WordEntry?> build(String entryId) async {
+    _anki = ref.read(ankiServiceProvider);
     final lookup = ref.read(lookupWordUsecaseProvider);
     final entry = await lookup.byId(entryId);
     if (entry != null) {
@@ -21,6 +25,22 @@ class WordDetailViewModel
       await lookup.remember(entry.id);
     }
     return entry;
+  }
+
+  /// Sends [entry] to AnkiDroid as a new note via the `ACTION_SEND` intent.
+  ///
+  /// The front is built from the headword + reading; the back is the numbered
+  /// meaning list. Returns `true` when AnkiDroid handled the intent and `false`
+  /// when it isn't installed (the caller shows an install hint).
+  Future<bool> addToAnki(WordEntry entry) {
+    final front = entry.hasReading
+        ? '${entry.headword}（${entry.reading}）'
+        : entry.headword;
+    final back = [
+      for (var i = 0; i < entry.meanings.length; i++)
+        '${i + 1}. ${entry.meanings[i]}',
+    ].join('\n');
+    return _anki.addNote(front: front, back: back);
   }
 }
 

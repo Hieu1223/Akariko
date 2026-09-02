@@ -10,9 +10,13 @@ import 'word_detail_viewmodel.dart';
 
 /// Full entry screen (§7.7): headword, reading, POS chips, numbered senses.
 ///
-/// Example-sentence tokenisation and the deck picker arrive with the tokenizer
-/// (phase 4) and flashcards (phase 6); the "Add to deck" action is present but
-/// inert until then.
+/// "Add to deck" sends the entry to AnkiDroid via an `ACTION_SEND` intent
+/// (front = headword + reading, back = numbered meanings) — see
+/// `modules/anki_module.dart`. The internal deck / flashcards phase (phase 6)
+/// is still not wired up, so the action delegates to Anki rather than the local
+/// `FlashcardsTable`.
+///
+/// Example-sentence tokenisation arrives with the tokenizer (phase 4).
 class WordDetailView extends ConsumerWidget {
   const WordDetailView({super.key, required this.entryId});
 
@@ -60,13 +64,13 @@ class WordDetailView extends ConsumerWidget {
   }
 }
 
-class _EntryBody extends StatelessWidget {
+class _EntryBody extends ConsumerWidget {
   const _EntryBody({required this.entry});
 
   final WordEntry entry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
 
     return ListView(
@@ -123,11 +127,19 @@ class _EntryBody extends StatelessWidget {
         OutlinedButton.icon(
           icon: const Icon(Icons.add),
           label: const Text('Add to deck'),
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Decks arrive with the flashcards phase.'),
-            ),
-          ),
+          onPressed: () async {
+            final ok = await ref
+                .read(wordDetailViewModelProvider(entry.id).notifier)
+                .addToAnki(entry);
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(ok
+                    ? 'Added to Anki'
+                    : 'AnkiDroid not installed — install it to add cards'),
+              ),
+            );
+          },
         ),
       ],
     );
