@@ -10,6 +10,8 @@ import 'app/theme/ui_prefs_notifier.dart';
 import 'data/datasources/local/dictionary_binary.dart';
 import 'data/local/app_database.dart';
 import 'data/local/hive_boxes.dart';
+import 'data/models/video_transcript.dart';
+import 'data/models/word_list_entry.dart';
 import 'modules/browser_module.dart';
 import 'modules/dictionary_module.dart';
 import 'presentation/browser/home_data_provider.dart';
@@ -22,6 +24,12 @@ Future<void> main() async {
 
   // 1. Hive (KV: settings / UI prefs)
   await Hive.initFlutter();
+  
+  // Register custom adapters for new models
+  Hive.registerAdapter(WordListEntryAdapter());
+  Hive.registerAdapter(VideoTranscriptSegmentAdapter());
+  Hive.registerAdapter(CachedVideoTranscriptAdapter());
+  
   final prefsBox = await Hive.openBox(HiveBoxes.prefs);
   final settingsBox = await Hive.openBox(HiveBoxes.settings);
 

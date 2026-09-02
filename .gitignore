@@ -1,50 +1,18 @@
 ```
-# Flutter/Dart specific
-**/doc/api/
+# Dependency directories
+.pub/
+.build/
 .dart_tool/
-.packages
-*.g.dart
-*.freezed.dart
 
-# Dependencies
-**/pubspec.lock
-
-# Native build outputs
-**/build/
-**/ios/.symlinks/
-**/android/.gradle/
-**/android/build/
-**/android/app/build/
-
-# IDE
-.idea/
-.vscode/
-*.iml
-*.ipr
-*.iws
+# Logs and temp files
+*.log
+*.tmp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Logs
-*.log
-**/logs/
-
-# OS
-.DS_Store
-Thumbs.db
-
 # Coverage
 coverage/
-*.lcov
-
-# Packages
-**/node_modules/
-
-# Temporary files
-*.tmp
-*.swp
-*~
 ```
