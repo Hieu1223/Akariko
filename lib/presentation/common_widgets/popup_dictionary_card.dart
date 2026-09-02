@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/routes.dart';
+import '../../data/models/token.dart';
 import '../../data/models/word_entry.dart';
 import '../browser/browser_viewmodel.dart';
 import '../dictionary/popup_dictionary_viewmodel.dart';
@@ -64,7 +65,11 @@ class _PopupDictionaryOverlayState extends ConsumerState<PopupDictionaryOverlay>
                     elevation: 8,
                     borderRadius: BorderRadius.circular(14),
                     color: Theme.of(context).colorScheme.surface,
-                    child: state.showMenu ? const _ContextMenu() : const _LookupList(),
+                    child: state.showLookup
+                        ? const _LookupList()
+                        : state.showTokens
+                            ? const _TokenList()
+                            : const _ContextMenu(),
                   ),
                 ),
               ),
@@ -154,7 +159,7 @@ class _ContextMenu extends ConsumerWidget {
             label: 'Lookup',
             enabled: text.isNotEmpty,
             onTap: () {
-              ref.read(popupDictionaryViewModelProvider.notifier).lookup();
+              ref.read(popupDictionaryViewModelProvider.notifier).tokenizeSelection();
             },
           ),
           _MenuItem(
@@ -219,6 +224,126 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
+/// The token breakdown shown after "Lookup" on a multi-token selection.
+///
+/// Lists every morpheme produced by the tokenizer. Tapping a token looks it
+/// up in the dictionary. If there are no tokens (non-Japanese text or a
+/// missing native bridge), the whole selection is looked up instead.
+class _TokenList extends ConsumerWidget {
+  const _TokenList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(popupDictionaryViewModelProvider);
+    final vm = ref.read(popupDictionaryViewModelProvider.notifier);
+    final textTheme = Theme.of(context).textTheme;
+    final query = state.selection?.text.trim() ?? '';
+
+    return SizedBox(
+      width: 300,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '“$query”',
+              style: textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            if (state.tokenizing)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (state.tokens.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No tokens found. Looking up the full text...',
+                  style: textTheme.bodyMedium
+                      ?.copyWith(color: Theme.of(context).hintColor),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: state.tokens.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final token = state.tokens[i];
+                    return _TokenRow(token: token, onTap: () => vm.lookupToken(token));
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TokenRow extends StatelessWidget {
+  const _TokenRow({required this.token, required this.onTap});
+
+  final Token token;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              token.surface,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            if (token.baseForm.isNotEmpty &&
+                token.baseForm != '*' &&
+                token.baseForm != token.surface)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  token.baseForm,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            if (token.posShort.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  token.posShort,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: scheme.outline),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The dictionary list popup opened by "Lookup".
 class _LookupList extends ConsumerWidget {
   const _LookupList();
@@ -237,6 +362,25 @@ class _LookupList extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (state.tokens.isNotEmpty && !state.loading)
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      ref.read(popupDictionaryViewModelProvider.notifier).backToTokens();
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Back to tokens',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
             Text(
               '“$query”',
               style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),

@@ -146,7 +146,8 @@ class BrowserView extends ConsumerWidget {
     // Intercept the OS back gesture / button on phones. Priority:
     //   1. the address-bar suggestion overlay → close it, stay on the page;
     //   2. the page's own history → step back inside the WebView;
-    //   3. nothing left → leave the app.
+    //   3. a parent tab on the nav stack → return to it;
+    //   4. nothing left → leave the app.
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -165,6 +166,10 @@ class BrowserView extends ConsumerWidget {
         final controller = vmNotifier.controller;
         if (controller != null && await controller.canGoBack()) {
           await vmNotifier.goBack();
+          return;
+        }
+        // No WebView history left — return to the parent tab if there is one.
+        if (vmNotifier.popTabBackStack()) {
           return;
         }
         await SystemNavigator.pop();

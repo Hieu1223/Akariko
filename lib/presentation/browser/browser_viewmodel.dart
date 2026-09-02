@@ -90,6 +90,12 @@ class BrowserViewModel extends Notifier<BrowserState> {
   DateTime _lastScrollProcess = DateTime.fromMicrosecondsSinceEpoch(0);
   static const Duration _scrollInterval = Duration(milliseconds: 1000 ~/ 24);
 
+  /// Tab navigation stack. When a tab opens another tab (e.g. "open in new
+  /// tab", web search, Ask AI), the parent tab id is pushed here. Pressing
+  /// back in a child tab whose WebView can't go back pops this stack and
+  /// returns to the parent tab instead of leaving the app.
+  final List<String> _tabBackStack = [];
+
   @override
   BrowserState build() {
     _module = ref.read(browserModuleProvider);
@@ -281,6 +287,38 @@ class BrowserViewModel extends Notifier<BrowserState> {
   /// timeout. Cancelled whenever the tab becomes active again.
   void _scheduleRelease(String id) => manager.scheduleRelease(id);
 
+  // ── Tab navigation stack ───────────────────────────────────────────────────
+  /// Pushes the current tab onto the back stack before opening a child tab.
+  /// Called by [webSearch], [askAi], and any "open in new tab" action.
+  void _pushTabForBackStack() {
+    if (state.activeTabId.isNotEmpty) {
+      _tabBackStack.remove(state.activeTabId);
+      _tabBackStack.add(state.activeTabId);
+    }
+  }
+
+  /// Pops the tab back stack and switches to the parent tab, then closes the
+  /// child tab that we're leaving (the back stack represents a parent→child
+  /// relationship — returning to the parent dismisses the child). Returns true
+  /// if there was a parent tab to return to, false if the stack was empty.
+  bool popTabBackStack() {
+    final childId = state.activeTabId;
+    while (_tabBackStack.isNotEmpty) {
+      final parentId = _tabBackStack.removeLast();
+      // The parent tab may have been closed since; skip stale entries.
+      if (state.tabs.any((t) => t.id == parentId)) {
+        switchTo(parentId);
+        // Close the child tab we came from (fire-and-forget — the watch
+        // listener reconciles the active tab and keeps one alive).
+        if (childId.isNotEmpty && childId != parentId) {
+          closeTab(childId).ignore();
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
   // ── Tab management ─────────────────────────────────────────────────────────
   Future<void> openNewTab() async {
     final tab = await _module.createTab(url: kHomeUrl, title: 'New Tab');
@@ -347,7 +385,9 @@ class BrowserViewModel extends Notifier<BrowserState> {
           .toList(),
     );
     addressController.text = target;
-    if (manager.hasController(tab.id)) {
+    if (target == kHomeUrl) {
+      await loadHomePage(tab.id);
+    } else if (manager.hasController(tab.id)) {
       await controller?.loadUrl(urlRequest: URLRequest(url: WebUri(target)));
     } else {
       // Home→web (or freshly created) tab: mount a WebView that loads [target].
@@ -360,7 +400,6 @@ class BrowserViewModel extends Notifier<BrowserState> {
 
   /// Loads the in-app home page into [tabId]'s WebView. Replaces the WebView's
   /// content with the HTML template + injected feed data (bookmarks + news).
-  /// Called from `onLoadStart` when a tab navigates to [kHomeUrl].
   Future<void> loadHomePage(String tabId) async {
     final c = manager[tabId];
     if (c == null) return;
@@ -406,13 +445,12 @@ class BrowserViewModel extends Notifier<BrowserState> {
       ref.read(popupDictionaryViewModelProvider.notifier).hide();
     }
     if (u == kHomeUrl) {
-      // The in-app home page: replace the WebView's content with the HTML
-      // template + injected feed data. The WebView is already mounted (it was
-      // created with [kHomeUrl] as its initial URL), so we just swap content.
+      // The in-app home page: intercept before the WebView tries to load the
+      // custom scheme, and inject the HTML template + feed data directly.
       loadHomePage(tabId);
       return;
     }
-    if (u.isNotEmpty) _setTabUrlInState(tabId, u);
+    if (u.isNotEmpty && u != 'about:blank') _setTabUrlInState(tabId, u);
   }
 
   void onLoadStop(String tabId, WebUri? url) {
@@ -421,11 +459,11 @@ class BrowserViewModel extends Notifier<BrowserState> {
       _nav.setLoading(false);
       _nav.setProgress(100);
     }
-    if (u.isNotEmpty && u != kHomeUrl) {
+    if (u.isNotEmpty && u != kHomeUrl && u != 'about:blank') {
       _module.updateTab(tabId, url: u);
     }
     final c = manager[tabId];
-    if (c != null && u != kHomeUrl) {
+    if (c != null && u != kHomeUrl && u != 'about:blank') {
       ref.read(webviewBridgeServiceProvider).injectListener(c);
     }
     ref.read(popupDictionaryViewModelProvider.notifier).hide();
@@ -556,6 +594,7 @@ class BrowserViewModel extends Notifier<BrowserState> {
   // ── Ask AI ────────────────────────────────────────────────────────────────
   Future<void> askAi(String text) async {
     final url = ref.read(aiLauncherModuleProvider).explainUrl(text);
+    _pushTabForBackStack();
     final tab = await _module.createTab(url: url, title: 'ChatGPT');
     manager.activeTabId = tab.id;
     _nav.setLoading(false);
@@ -590,6 +629,7 @@ class BrowserViewModel extends Notifier<BrowserState> {
   /// Opens a web-search for [text] in a new tab, leaving the current tab intact.
   Future<void> webSearch(String text) async {
     final target = text.toLoadableUrl();
+    _pushTabForBackStack();
     final tab = await _module.createTab(url: target, title: '');
     manager.activeTabId = tab.id;
     _nav.setLoading(false);
