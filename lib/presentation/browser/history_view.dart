@@ -51,29 +51,8 @@ class HistoryView extends ConsumerWidget {
           Expanded(
             child: groups.isEmpty
                 ? const Center(child: Text('No history'))
-                : ListView.builder(
-                    itemCount: groups.length,
-                    itemBuilder: (context, i) {
-                      final group = groups[i];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                            child: Text(
-                              group.label,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                          ...group.entries.map(
-                            (e) => _HistoryTile(entry: e),
-                          ),
-                        ],
-                      );
-                    },
+                : const RepaintBoundary(
+                    child: _HistoryListView(),
                   ),
           ),
         ],
@@ -81,7 +60,7 @@ class HistoryView extends ConsumerWidget {
     );
   }
 
-  Future<bool> _confirm(BuildContext context, String message) async {
+  static Future<bool> _confirm(BuildContext context, String message) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -102,7 +81,7 @@ class HistoryView extends ConsumerWidget {
     return result ?? false;
   }
 
-  List<_DayGroup> _groupByDay(List<HistoryEntry> entries) {
+  static List<_DayGroup> _groupByDay(List<HistoryEntry> entries) {
     final map = <String, List<HistoryEntry>>{};
     for (final e in entries) {
       final key = _dayKey(e.visitedAt);
@@ -115,16 +94,50 @@ class HistoryView extends ConsumerWidget {
         .toList();
   }
 
-  String _dayKey(DateTime d) =>
+  static String _dayKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  String _dayLabel(String key) {
+  static String _dayLabel(String key) {
     final now = DateTime.now();
     final today = _dayKey(now);
     final yesterday = _dayKey(now.subtract(const Duration(days: 1)));
     if (key == today) return 'Today';
     if (key == yesterday) return 'Yesterday';
     return key;
+  }
+}
+
+class _HistoryListView extends ConsumerWidget {
+  const _HistoryListView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(historyViewModelProvider);
+    final groups = HistoryView._groupByDay(vm.filtered);
+    return ListView.builder(
+      itemCount: groups.length,
+      itemBuilder: (context, i) {
+        final group = groups[i];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                group.label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            ...group.entries.map(
+              (e) => _HistoryTile(entry: e),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
